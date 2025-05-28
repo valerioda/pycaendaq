@@ -82,6 +82,9 @@ def main():
     total_events = args.get("n_events")
     max_duration = args.get("duration")
 
+    if buffer_size > total_events:
+        buffer_size = total_events
+
     temp_names = [
         "tempsensfirstadc", "tempsenshottestadc", "tempsenslastadc",
         "tempsensairin", "tempsensairout", "tempsenscore", "tempsensdcdc"
@@ -178,13 +181,6 @@ def main():
             event_counter += 1
             buffer_counter += 1
 
-            if total_events and event_counter >= total_events:
-                print("Reached target number of events. Stopping.")
-                break
-            if max_duration and (time.time() - start_time) >= max_duration:
-                print("Reached max acquisition time. Stopping.")
-                break
-
             if buffer_counter >= buffer_size:
                 print(f"...writing current file: {current_file}, total events {event_counter}")
                 for i, ch in enumerate(ch_list):
@@ -224,6 +220,13 @@ def main():
                     current_file = get_new_filename(base_name, timestamp_str)
 
                 buffer_counter = 0
+
+            if total_events and event_counter >= total_events:
+                print("Reached target number of events. Stopping.")
+                break
+            if max_duration and (time.time() - start_time) >= max_duration:
+                print("Reached max acquisition time. Stopping.")
+                break
 
         dig.cmd.disarmacquisition()
         print("Acquisition stopped.")
