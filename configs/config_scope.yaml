@@ -1,0 +1,8 @@
+general_settings:
+  record_length: 4084
+  pretrigger: 2042
+  dc_offset: "10"
+  n_channels: 1
+  software_trigger_rate: 1000 # Hz
+  max_file_size_mb: 100
+  buffer_size: 100
