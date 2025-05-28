@@ -5,6 +5,7 @@ from datetime import datetime
 import numpy as np
 from matplotlib import pyplot as plt
 import yaml
+import ast
 
 from lgdo import lh5, Table, Array, WaveformTable, ArrayOfEqualSizedArrays
 from caen_felib import lib, device, error
@@ -45,11 +46,32 @@ def main():
         sys.exit(1)
 
     gen_settings = config.get("general_settings", {})
+    channel_settings = config.get("channel_settings", {})
+    ch_list = []
+
+    for group_name, group_dict in channel_settings.items():
+        channel_list = group_dict.get("channel_list")
+        is_enabled = group_dict.get("chenable")
+        if channel_list is None:
+            print(f"WARNING: 'channel_list' missing for group '{group_name}'. Skipping.")
+            continue
+        if not is_enabled:
+            print(f"Group '{group_name}' is DISABLED. Skipping channels.")
+            continue
+        channel_list = eval(channel_list)
+        group_dict["channel_list"] = [ch for ch in channel_list]
+        for ch in channel_list:
+            ch_list.append(ch)
+
+    ch_list = sorted(list(ch_list))
+    active_ch = len(ch_list)
+    total_ch = int(ch_list[-1]+1)
+
+    print(f"Total active channels: {active_ch}")
+    print(f"Active channels list: {ch_list}")
 
     record_length = gen_settings.get("record_length", 4084)
     pretrigger = gen_settings.get("pretrigger", 2042)
-    dc_offset = gen_settings.get("dc_offset", "10")
-    active_ch = gen_settings.get("n_channels", 1)
     max_file_size_mb = gen_settings.get("max_file_size_mb", 100)
     max_file_size_bytes = max_file_size_mb * 1024 * 1024
     buffer_size = gen_settings.get("buffer_size", 100)
@@ -71,14 +93,15 @@ def main():
     data_format = [
         {"name": "EVENT_SIZE", "type": "SIZE_T"},
         {"name": "TIMESTAMP", "type": "U64"},
-        {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [active_ch, record_length]},
-        {"name": "WAVEFORM_SIZE", "type": "U64", "dim": 1, "shape": [active_ch]},
+        {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [total_ch, record_length]},
+        {"name": "WAVEFORM_SIZE", "type": "U64", "dim": 1, "shape": [total_ch]},
     ]
 
-    waveform_buffer = [[] for _ in range(active_ch)]
-    timestamp_buffer = [[] for _ in range(active_ch)]
     temperature_buffer = []
-    event_counter = 0
+    waveform_buffer = np.full((active_ch, buffer_size, record_length), 0, dtype=np.uint16)
+    timestamp_buffer = np.full((active_ch, buffer_size), 0, dtype=np.uint64)
+
+    event_counter = buffer_counter = 0
     start_time = time.time()
 
     with device.connect(dig_address) as dig:
@@ -98,12 +121,22 @@ def main():
         nch = int(dig.par.NumCh.value)
         dig.par.iolevel.value = "TTL"
         dig.par.acqtriggersource.value = trig_source
-        dig.par.recordlengths.value = f"{record_length}"
-        dig.par.pretriggers.value = f"{pretrigger}"
+        dig.par.recordlengths.value = str(record_length)
+        dig.par.pretriggers.value = str(pretrigger)
 
-        for i, ch in enumerate(dig.ch):
-            ch.par.chenable.value = "TRUE" if i < active_ch else "FALSE"
-            ch.par.dcoffset.value = dc_offset
+        for ch in dig.ch:
+            ch_n = int(str(ch).split("/")[-1])
+            if ch_n < total_ch:
+                ch.par.chenable.value = "TRUE"
+                for group_name, group_dict in channel_settings.items():
+                    if ch_n in group_dict["channel_list"]:
+                        print(f"Settings for {ch} from {group_name}")
+                        for par, par_dict in group_dict.items():
+                            if par == "channel_list": continue
+                            ch.par[par].value = str(par_dict)
+                            #print(ch,par,ch.par[par].value)
+            else:
+                ch.par.chenable.value = "FALSE"
 
         endpoint = dig.endpoint["scope"]
         data = endpoint.set_read_data_format(data_format)
@@ -113,84 +146,84 @@ def main():
         dig.cmd.swstartacquisition()
 
         print("\nStarting acquisition...")
-        try:
-            while True:
-                if trig_source == "SwTrg":
-                    time.sleep(1 / software_rate)
-                    dig.cmd.sendswtrigger()
+        while True:
+            if trig_source == "SwTrg":
+                time.sleep(1 / software_rate)
+                dig.cmd.sendswtrigger()
 
-                try:
-                    endpoint.read_data(100, data)
-                except error.Error as ex:
-                    if ex.code is error.ErrorCode.TIMEOUT:
+            try:
+                endpoint.read_data(1000, data)
+            except error.Error as ex:
+                if ex.code is error.ErrorCode.TIMEOUT:
+                    continue
+                if ex.code is error.ErrorCode.STOP:
+                    break
+                raise ex
+
+            waveform = data[2].value
+            timestamp = data[1].value
+
+            if waveform.shape[0] < active_ch or waveform.shape[1] != record_length:
+                print(f"[WARNING] Invalid waveform shape: {waveform.shape} (expected at least {active_ch} x {record_length})")
+                continue
+            
+            for i, ch in enumerate(ch_list):
+                waveform_buffer[i, buffer_counter, :] = waveform[ch]
+                timestamp_buffer[i, buffer_counter] = np.uint64(timestamp)
+
+            if save_temperature:
+                temp_values = [float(dig.get_value(f"/par/{name}")) for name in temp_names]
+                temperature_buffer.append(temp_values)
+
+            event_counter += 1
+            buffer_counter += 1
+
+            if total_events and event_counter >= total_events:
+                print("Reached target number of events. Stopping.")
+                break
+            if max_duration and (time.time() - start_time) >= max_duration:
+                print("Reached max acquisition time. Stopping.")
+                break
+
+            if buffer_counter >= buffer_size:
+                print(f"...writing current file: {current_file}, total events {event_counter}")
+                for i, ch in enumerate(ch_list):
+                    if waveform_buffer[i].ndim != 2 or waveform_buffer[i].shape[1] != record_length:
+                        print(f"[ERROR] Buffer shape mismatch: {waveform_buffer[i].shape}")
                         continue
-                    if ex.code is error.ErrorCode.STOP:
-                        break
-                    raise ex
 
-                waveform = data[2].value
-                timestamp = data[1].value
+                    values = ArrayOfEqualSizedArrays(
+                        nda=waveform_buffer[i],
+                        attrs={"datatype": "array_of_equalsized_arrays<1,1>{real}", "units": "ADC"},
+                    )
+                    wf = WaveformTable(size=buffer_size,
+                                       t0=Array([0]*buffer_size, attrs={"datatype": "array<1>{real}", "units": "ns"}),
+                                       dt=Array([1]*buffer_size, attrs={"datatype": "array<1>{real}", "units": "ns"}),
+                                       values=values,
+                                       values_units="ADC"
+                                       )
 
-                for ch in range(active_ch):
-                    waveform_buffer[ch].append(waveform[ch])
-                    timestamp_buffer[ch].append(np.uint64(timestamp))
+                    ts_arr = Array(timestamp_buffer[i], attrs={"datatype": "array<1>{real}", "units": "ADC"})
+                    raw_data = Table(col_dict={"waveform": wf, "timestamp": ts_arr})
 
-                if save_temperature:
-                    temp_values = [float(dig.get_value(f"/par/{name}")) for name in temp_names]
-                    temperature_buffer.append(temp_values)
+                    lh5.write(raw_data, name="raw", lh5_file=current_file, wo_mode="append", group=f"ch{ch:03}")
 
-                event_counter += 1
+                if save_temperature and temperature_buffer:
+                    temp_arrs = {
+                        f"temp{i}": Array(np.array([row[i] for row in temperature_buffer]),
+                                           attrs={"datatype": "array<1>{real}", "units": "C"})
+                        for i in range(len(temp_names))
+                    }
+                    temp_data = Table(col_dict=temp_arrs)
+                    lh5.write(temp_data, name="raw", lh5_file=current_file, wo_mode="append", group="dig")
+                    temperature_buffer.clear()
 
-                # Check for stopping conditions
-                if total_events and event_counter >= total_events:
-                    print("Reached target number of events. Stopping.")
-                    break
-                if max_duration and (time.time() - start_time) >= max_duration:
-                    print("Reached max acquisition time. Stopping.")
-                    break
+                if os.path.exists(current_file) and os.path.getsize(current_file) >= max_file_size_bytes:
+                    print(f"File {current_file} exceeded size. Rotating.")
+                    timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
+                    current_file = get_new_filename(base_name, timestamp_str)
 
-                if len(timestamp_buffer[0]) >= buffer_size:
-                    print(f"...writing current file: {current_file}, total events {event_counter}")
-                    for ch in range(active_ch):
-                        wfs = np.array(waveform_buffer[ch], dtype=np.uint16)
-                        ts = np.array(timestamp_buffer[ch], dtype=np.uint64)
-
-                        values = ArrayOfEqualSizedArrays(
-                            nda=wfs,
-                            attrs={"datatype": "array_of_equalsized_arrays<1,1>{real}", "units": "ADC"},
-                        )
-                        wf = WaveformTable(size=len(ts),
-                                           t0=Array([0]*len(ts), attrs={"datatype": "array<1>{real}", "units": "ns"}),
-                                           dt=Array([1]*len(ts), attrs={"datatype": "array<1>{real}", "units": "ns"}),
-                                           values=values,
-                                           values_units="ADC")
-
-                        ts_arr = Array(ts, attrs={"datatype": "array<1>{real}", "units": "ADC"})
-                        raw_data = Table(col_dict={"waveform": wf, "timestamp": ts_arr})
-
-                        #lh5.write(raw_data, name="raw", lh5_file=current_file, wo_mode="append", group=f"ch{ch:03}")
-
-                        waveform_buffer[ch].clear()
-                        timestamp_buffer[ch].clear()
-
-                    if save_temperature and temperature_buffer:
-                        temp_arrs = {
-                            f"temp{i}": Array(np.array([row[i] for row in temperature_buffer]),
-                                               attrs={"datatype": "array<1>{real}", "units": "C"})
-                            for i in range(len(temp_names))
-                        }
-                        temp_data = Table(col_dict=temp_arrs)
-                        lh5.write(temp_data, name="raw", lh5_file=current_file, wo_mode="append", group="dig")
-                        temperature_buffer.clear()
-
-                    if os.path.exists(current_file) and os.path.getsize(current_file) >= max_file_size:
-                        print(f"File {current_file} exceeded size. Rotating.")
-                        timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
-                        current_file = get_new_filename(base_name, timestamp_str)
-
-        except KeyboardInterrupt:
-            #dig.cmd.swstopacquisition()
-            print("KeyboardInterrupt received. Stopping acquisition.")
+                buffer_counter = 0
 
         dig.cmd.disarmacquisition()
         print("Acquisition stopped.")
