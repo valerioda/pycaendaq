@@ -1,35 +1,86 @@
 general_settings:
-  record_length: 4084
-  pretrigger: 2042
+  recordlengths: 4084
+  pretriggers: 2042
   software_trigger_rate: 100 # Hz
   max_file_size_mb: 100
   buffer_size: 100
+  iolevel: TTL # (STRING) [['NIM', 'TTL']]
+  acqtriggersource: SwTrg # (STRING) [['TrgIn', 'P0', 'TestPulse', 'UserTrg', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn', 'GPIO']] Defines the source for the Acquisition Trigger, which is the signal that opens the acquisition window and saves the waveforms in the memory buffers.
+  busyinsource: SIN # (STRING) [['Disabled', 'SIN', 'GPIO', 'LVDS']] This parameter defines the source of the Busy Input.
+  clocksource:  # (STRING) [['Internal', 'FPClkIn']] Source of the system clock.
+  dacoutchselect: 0 # (NUMBER) [[]] When the DACoutMode is set to ChInput, the DAC reproduces the inputs signal received by a selected channel
+  dacoutmode: Static # (STRING) [['Static', 'Ramp', 'Sin5MHz', 'Square', 'IPE', 'ChInput', 'MemOccupancy', 'ChSum', 'OverThrSum']] Mode of the DAC output
+  dacoutstaticlevel: 8192 # (NUMBER) [[]] Level of DAC output when mode is set to static
+  decimationfactor: 1 # (STRING) [['1', '2', '1024', '4', '8', '16', '32', '64', '128', '256', '512']] Specify the ADC decimation factor
+  enautodisarmacq: False # (STRING) [['True', 'False']] When enabled, the Auto Disarm option disarms the acquisition at the stop of run.
+  enchsuppr: False # (STRING) [['True', 'False']] Enable channel suppression
+  enclockoutfp:  # (STRING) [['True', 'False']] Enable clock output on Front Panel for the daisy chain propagation of the clock between multiple boards.
+  enmultiwindowrun: False # (STRING) [['True', 'False']] When the acquisition start and stop are controlled by an external RUN signal it is possible to configure the digitizer to work in two different modes.
+  enoffsetcalibration: True # (STRING) [['True', 'False']] The calibration can be disabled, mainly when a new calibration has to be calculated.
+  entriggeroverlap: False # (STRING) [['True', 'False']] Allows a trigger occurring within the acquisition window of a previous trigger to be either accepted or rejected.
+  errorflagdatamask:  # (STRING) [[]] All these errors can be combined into a Data Error Flag through a masked OR, programmed by this parameter.
+  errorflagmask:  # (STRING) [[]] All these errors can be combined into a Global Error Flag through a masked OR, programmed by this parameter.
+  gpiomode: SIN # (STRING) [['Disabled', 'TrgIn', 'SwTrg', 'Run', 'RefClk', 'TestPulse', 'Busy', 'UserGPO', 'Fixed0', 'Fixed1', 'P0', 'SIN', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn']] Select the signal that is routed to the GPIO, when this is used as output.
+  itlaenretrigger: False # (STRING) [['True', 'False']] Set if the ITLs are retriggerable or not.
+  itlagatewidth: 0 # (NUMBER) [[]] Gate generator at the output of the ITLs. The combinatorial logic of the self-trigger.
+  itlamainlogic: OR # (STRING) [['OR', 'AND', 'Majority']] Set the logic of ITLA to combine all the self-triggers of the board according to a specific trigger logic.
+  itlamajoritylev: 2 # (NUMBER) [[]] Defines the majority level of the Main Logic of the ITLA.
+  itlamask: 0 # (STRING) [[]] Enable Mask at the input of the ITLA.
+  itlapairlogic: NONE # (STRING) [['OR', 'AND', 'NONE']] Pairs of channels can be combined with an OR or AND before feeding the Main trigger Logic.
+  itlapolarity: Direct # (STRING) [['Direct', 'Inverted']] Polarity of ITLA.
+  itlbenretrigger: False # (STRING) [['True', 'False']] Set if the ITLs are retriggerable or not.
+  itlbgatewidth: 0 # (NUMBER) [[]] Gate generator at the output of the ITLs. The combinatorial logic of the self-trigger.
+  itlbmainlogic: OR # (STRING) [['OR', 'AND', 'Majority']] Set the logic of ITLB to combine all the self-triggers of the board according to a specific trigger logic.
+  itlbmajoritylev: 2 # (NUMBER) [[]] Defines the majority level of the Main Logic of the ITLB.
+  itlbmask: 0 # (STRING) [[]] Enable Mask at the input of the ITLB.
+  itlbpairlogic: NONE # (STRING) [['OR', 'AND', 'NONE']] Pairs of channels can be combined with an OR or AND before feeding the Main trigger Logic.
+  itlbpolarity: Direct # (STRING) [['Direct', 'Inverted']] Polarity of ITLB.
+  lvdsioreg: 0 # (STRING) [[]] Set the status of the LVDS I/O for the quartets that are programmed to be output and Mode = IORegister.
+  lvdstrgmask:  # (STRING) [[]] Each LVDS line can be assigned to a combination of the 64 self-triggers, implemented as a masked OR, where the mask is set by this parameter.
+  pausetimestamp: Hold # (STRING) [['Hold', 'Run']] Allow the time stamp to either stop or run during the pauses of the acquisition.
+  permanentclockoutdelay:  # (NUMBER) [[]] Stores the clock output delay into the flash memory and makes it permanent.
+  rundelay: 0 # (NUMBER) [[]] Allow the start of the acquisition to be delayed with respect to the rising edge of the RUN signal.
+  startsource: SWcmd # (STRING) [['EncodedClkIn', 'SINlevel', 'SINedge', 'SWcmd', 'LVDS', 'FirstTrigger', 'P0']] Defines the source for the start of run.
+  syncoutmode: Disabled # (STRING) [['Disabled', 'SyncIn', 'TestPulse', 'IntClk', 'Run', 'User']] This parameter defines the SyncOut mode.
+  testpulsehighlevel: 0 # (NUMBER) [[]] High level of the test pulse.
+  testpulselowlevel: 0 # (NUMBER) [[]] Low level of the test pulse.
+  testpulseperiod: 0 # (NUMBER) [[]] Period of the Test Pulse, a programmable square wave that can be used as an internal periodic trigger or to generate a logic test pulse (TTL or NIM) on the TRGOUT and GPIO outputs.
+  testpulsewidth: 0 # (NUMBER) [[]] Width (i.e. the time the signal stays high = 1) of the test pulse in ns.
+  trgoutmode: Disabled # (STRING) [['Disabled', 'TrgIn', 'Run', 'RefClk', 'TestPulse', 'Busy', 'UserTrgout', 'Fixed0', 'Fixed1', 'SyncIn', 'SIN', 'GPIO', 'P0', 'LBinClk', 'AcceptTrg', 'TrgClk', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn']] Select the signal that is routed to the TRGOUT output.
+  triggerdelays: 0 # (NUMBER) [[]] Delay added to the acquisition trigger.
+  triggerdelayt: 0 # (NUMBER) [[]] Delay added to the acquisition trigger.
+  triggeridmode: TriggerCnt # (STRING) [['TriggerCnt', 'EventCnt', 'LVDSpattern']] The event data packet contains a 24 bit identifier called TriggerID.
+  tstampresetsource: Start # (STRING) [['Start', 'SIN', 'GPIO', 'EncodedClkIn']] Defines the source of the time stamp reset.
+  vetopolarity: ActiveHigh # (STRING) [['ActiveHigh', 'ActiveLow']] This parameter defines the polarity of the Veto.
+  vetosource: Disabled # (STRING) [['Disabled', 'SIN', 'GPIO', 'LVDS', 'P0', 'EncodedClkIn']] This parameter defines the source of the Veto.
+  vetowidth: 0 # (NUMBER) [[]] Veto width in nanoseconds. When 0, the monostable is disabled and the veto lasts as long as the selected source is active.
+  volatileclockoutdelay:  # (NUMBER) [[]] Sets the delay of the clock output with respect to the input reference clock.
 channel_settings:
   group1:
-    channels: "0..2"
-    chenable: "True" # (STRING) ['True', 'False'] Enable channel for the acquisition. When the channel is disabled, it doesn't give any data and its self-trigger is off.
+    channels: "0"
+    chenable: True # (STRING) ['True', 'False'] Enable channel for the acquisition. When the channel is disabled, it doesn't give any data and its self-trigger is off.
     chsupprsamplesoverthreshold: 1 # (NUMBER) [] Samples over thredhold for channel suppression
     chsupprthr: 0 # (NUMBER) [] Threshold for channel suppression. Configuration parameters TriggerThrMode and SelfTriggerEdge shared with TriggerThr.
     dcoffset: 10 # (NUMBER) [] A constant DC offset (controlled by a 16 bit DAC) is added to the analog input in order to adjust the position of the signal baseline.
-    itlconnect: "Disabled" # (STRING) ['Disabled', 'ITLA', 'ITLB'] Determine if the channel partecipate to ITLA or ITLB.
+    itlconnect: Disabled # (STRING) ['Disabled', 'ITLA', 'ITLB'] Determine if the channel partecipate to ITLA or ITLB.
     overthresholdvetowidth: 0 # (NUMBER) [] Veto width to discard triggers when crossing the threshold in the opposite direction to the trigger one
     samplesoverthreshold: 1 # (NUMBER) [] Samples over threshold
-    selftriggeredge: "RISE" # (STRING) ['RISE', 'FALL'] The self-trigger can be issued on either the rising or falling crossing of the threshold. Used also by ChSupprThr.
-    selftriggerwidth: "8" # (STRING) [] Width of the self-trigger. 0 means linear mode
+    selftriggeredge: RISE # (STRING) ['RISE', 'FALL'] The self-trigger can be issued on either the rising or falling crossing of the threshold. Used also by ChSupprThr.
+    selftriggerwidth: 8 # (STRING) [] Width of the self-trigger. 0 means linear mode
     signaloffset: 0 # (NUMBER) [] Offset of the input signal.
     triggerthr: 0 # (NUMBER) [] Threshold value in ADC counts. The value is relative to the baseline.
-    triggerthrmode: "Relative" # (STRING) ['Relative', 'Absolute'] Defines whether the trigger threshold is relative to the baseline or absolute. Used also by ChSupprThr.
+    triggerthrmode: Relative # (STRING) ['Relative', 'Absolute'] Defines whether the trigger threshold is relative to the baseline or absolute. Used also by ChSupprThr.
   group2:
     channels: "3..4"
-    chenable: "True" # (STRING) ['True', 'False'] Enable channel for the acquisition. When the channel is disabled, it doesn't give any data and its self-trigger is off.
+    chenable: True # (STRING) ['True', 'False'] Enable channel for the acquisition. When the channel is disabled, it doesn't give any data and its self-trigger is off.
     chsupprsamplesoverthreshold: 1 # (NUMBER) [] Samples over thredhold for channel suppression
     chsupprthr: 0 # (NUMBER) [] Threshold for channel suppression. Configuration parameters TriggerThrMode and SelfTriggerEdge shared with TriggerThr.
     dcoffset: 50 # (NUMBER) [] A constant DC offset (controlled by a 16 bit DAC) is added to the analog input in order to adjust the position of the signal baseline.
-    itlconnect: "Disabled" # (STRING) ['Disabled', 'ITLA', 'ITLB'] Determine if the channel partecipate to ITLA or ITLB.
+    itlconnect: Disabled # (STRING) ['Disabled', 'ITLA', 'ITLB'] Determine if the channel partecipate to ITLA or ITLB.
     overthresholdvetowidth: 0 # (NUMBER) [] Veto width to discard triggers when crossing the threshold in the opposite direction to the trigger one
     samplesoverthreshold: 1 # (NUMBER) [] Samples over threshold
-    selftriggeredge: "RISE" # (STRING) ['RISE', 'FALL'] The self-trigger can be issued on either the rising or falling crossing of the threshold. Used also by ChSupprThr.
-    selftriggerwidth: "8" # (STRING) [] Width of the self-trigger. 0 means linear mode
+    selftriggeredge: RISE # (STRING) ['RISE', 'FALL'] The self-trigger can be issued on either the rising or falling crossing of the threshold. Used also by ChSupprThr.
+    selftriggerwidth: 8 # (STRING) [] Width of the self-trigger. 0 means linear mode
     signaloffset: 0 # (NUMBER) [] Offset of the input signal.
     triggerthr: 0 # (NUMBER) [] Threshold value in ADC counts. The value is relative to the baseline.
-    triggerthrmode: "Relative" # (STRING) ['Relative', 'Absolute'] Defines whether the trigger threshold is relative to the baseline or absolute. Used also by ChSupprThr.
+    triggerthrmode: Relative # (STRING) ['Relative', 'Absolute'] Defines whether the trigger threshold is relative to the baseline or absolute. Used also by ChSupprThr.
