@@ -6,7 +6,7 @@ general_settings:
   buffer_size: 500
   interval_stats: 200
   iolevel: TTL # (STRING) [['NIM', 'TTL']]
-  acqtriggersource: SwTrg|TrgIn # (STRING) [['TrgIn', 'P0', 'TestPulse', 'UserTrg', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn', 'GPIO']] Defines the source for the Acquisition Trigger, which is the signal that opens the acquisition window and saves the waveforms in the memory buffers.
+  acqtriggersource: SwTrg # (STRING) [['TrgIn', 'P0', 'TestPulse', 'UserTrg', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn', 'GPIO']] Defines the source for the Acquisition Trigger, which is the signal that opens the acquisition window and saves the waveforms in the memory buffers.
   busyinsource: SIN # (STRING) [['Disabled', 'SIN', 'GPIO', 'LVDS']] This parameter defines the source of the Busy Input.
   clocksource:  # (STRING) [['Internal', 'FPClkIn']] Source of the system clock.
   dacoutchselect: 0 # (NUMBER) [[]] When the DACoutMode is set to ChInput, the DAC reproduces the inputs signal received by a selected channel
@@ -67,9 +67,9 @@ channel_settings:
     overthresholdvetowidth: 0 # (NUMBER) [] Veto width to discard triggers when crossing the threshold in the opposite direction to the trigger one
     samplesoverthreshold: 1 # (NUMBER) [] Samples over threshold
     selftriggeredge: RISE # (STRING) ['RISE', 'FALL'] The self-trigger can be issued on either the rising or falling crossing of the threshold. Used also by ChSupprThr.
-    selftriggerwidth: 8 # (STRING) [] Width of the self-trigger. 0 means linear mode
+    selftriggerwidth: 2 # (STRING) [] Width of the self-trigger. 0 means linear mode
     signaloffset: 0 # (NUMBER) [] Offset of the input signal.
-    triggerthr: 0 # (NUMBER) [] Threshold value in ADC counts. The value is relative to the baseline.
+    triggerthr: 100 # (NUMBER) [] Threshold value in ADC counts
     triggerthrmode: Relative # (STRING) ['Relative', 'Absolute'] Defines whether the trigger threshold is relative to the baseline or absolute. Used also by ChSupprThr.
   group2:
     channels: "3..4"

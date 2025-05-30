@@ -101,7 +101,7 @@ def main():
     total_events = args.get("n_events")
     max_duration = args.get("duration")
 
-    if buffer_size > total_events:
+    if total_events is not None and buffer_size > total_events:
         buffer_size = total_events
 
     temp_names = [
