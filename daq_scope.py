@@ -118,16 +118,21 @@ def main():
     with device.connect(dig_address) as dig:
         dig.cmd.reset()
 
+        modelname = dig.par.modelname.value
         fw_type = dig.par.fwtype.value
         fw_ver = dig.par.fpga_fwver.value
         tot_channels = int(dig.par.numch.value)
-        print("\nFirmware",fw_type, fw_ver)
-
         adc_samplrate_msps = float(dig.par.adc_samplrate.value)  # in Msps
         adc_n_bits = int(dig.par.adc_nbit.value)
         sampling_period_ns = int(1e3 / adc_samplrate_msps)
-        
-        print(f"Sampling rate = {adc_samplrate_msps} MHz\nn. bit = {adc_n_bits}\nSampling period = {sampling_period_ns} ns")
+        inputrange = dig.par.inputrange.value
+        inputtype = dig.par.inputtype.value
+        print(f"\nDigitizer model: {modelname}, Firmware: {fw_type} v. {fw_ver}")
+        print(f"Sampling rate = {adc_samplrate_msps} MHz\n",
+              f"n. bit = {adc_n_bits}\n",
+              f"Sampling period = {sampling_period_ns} ns\n",
+              f"Input dynamic range = {inputrange} V\n",
+              f"Input type = {inputtype}\n")
 
         print(f"--- Applying general digitizer settings ---")
         for param_name, param_value in gen_settings.items():
@@ -206,7 +211,7 @@ def main():
             buffer_counter += 1
             
             if (event_counter % 100) == 0:
-                print_stats(start_time,event_counter)
+                print_stats(dig, start_time, event_counter)
 
             if buffer_counter >= buffer_size:
                 if save_enabled:
@@ -252,11 +257,11 @@ def main():
 
             if total_events and event_counter >= total_events:
                 print("Reached target number of events. Stopping.")
-                print_stats(start_time,event_counter)
+                print_stats(dig, start_time, event_counter)
                 break
             if max_duration and (time.time() - start_time) >= max_duration:
                 print("Reached max acquisition time. Stopping.")
-                print_stats(start_time,event_counter)
+                print_stats(dig, start_time, event_counter)
                 break
 
         dig.cmd.disarmacquisition()
@@ -265,9 +270,20 @@ def main():
 def get_new_filename(base_name, timestamp_str):
     return f"{base_name}_{timestamp_str}.lh5"
 
-def print_stats(start_time, counter):
+def print_stats(dig, start_time, counter):
     elapsed = time.time() - start_time
     rate = counter / elapsed / (1024. * 1024.) # MB/s
+    par_stats = ["acquisitionstatus","livetimemonitor","realtimemonitor",
+                 "deadtimemonitor","triggercnt","losttriggercnt"]
+    for par in par_stats:
+        val = dig.get_value(f'/par/{par}')
+        if par in ["livetimemonitor", "realtimemonitor", "deadtimemonitor"]:
+            name = par.split("monitor")[0]
+            val = int(val)
+            val = int(val / 524288)
+        else:
+            name = par
+        print(f"{name}: {val} ", end='')
     print(f"Elapsed time {elapsed:.1f} s, n. events: {counter}, readout rate {rate:.1e} MB/s")
 
 
