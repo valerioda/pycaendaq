@@ -149,33 +149,19 @@ def main():
 
         print("\nSetting channel parameters")
         for ch in dig.ch:
-            try:
-                ch_number_str = str(ch).split("/")[-1]
-                ch_number = int(ch_number_str)
-            except (ValueError, IndexError):
-                print(f"WARNING: Could not extract channel number from '{ch}'")
+            ch.par.chenable.value = "FALSE"
+
+        for group_name, group_dict in channel_settings.items():
+            if "channels" not in group_dict:
+                print(f"WARNING: Group '{group_name}' is missing or has an invalid 'channels'.")
                 continue
-            if hasattr(ch.par, 'chenable'):
-                ch.par.chenable.value = "FALSE"
-            else:
-                print(f"WARNING: Channel {ch_number} does not have a 'chenable' parameter")
-    
-            for group_name, group_dict in channel_settings.items():
-                if "channel_list" not in group_dict or not isinstance(group_dict["channel_list"], list):
-                    print(f"WARNING: Group '{group_name}' is missing or has an invalid 'channel_list'.")
+            chns = group_dict["channels"]
+            print(f"--- Applying settings for channels {chns} of group '{group_name}' ---")
+            for param_name, param_value in group_dict.items():
+                if param_name in ["channel_list", "channels"]:
                     continue
-                if ch_number in group_dict["channel_list"]:
-                    print(f"--- Applying settings for channel {ch_number} from group '{group_name}' ---")
-    
-                    for param_name, param_value_raw in group_dict.items():
-                        if param_name in ["channel_list", "channels"]:
-                            continue
-                        if hasattr(ch.par, param_name):
-                            value_to_set = str(param_value_raw)
-                            print(f"  {ch}: Setting {param_name} to '{value_to_set}'")
-                            ch.par[param_name].value = value_to_set
-                        else:
-                            print(f"  WARNING: Parameter '{param_name}' not found on channel {ch_number}. Skipping.")
+                print(f"  /ch/{chns}: Setting {param_name} to {param_value}")
+                dig.set_value(f"/ch/{chns}/par/{param_name}",str(param_value))
 
         endpoint = dig.endpoint["scope"]
         data = endpoint.set_read_data_format(data_format)
