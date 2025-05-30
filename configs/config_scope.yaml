@@ -3,9 +3,10 @@ general_settings:
   pretriggers: 2042
   software_trigger_rate: 100 # Hz
   max_file_size_mb: 100
-  buffer_size: 100
+  buffer_size: 500
+  interval_stats: 200
   iolevel: TTL # (STRING) [['NIM', 'TTL']]
-  acqtriggersource: SwTrg # (STRING) [['TrgIn', 'P0', 'TestPulse', 'UserTrg', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn', 'GPIO']] Defines the source for the Acquisition Trigger, which is the signal that opens the acquisition window and saves the waveforms in the memory buffers.
+  acqtriggersource: SwTrg|TrgIn # (STRING) [['TrgIn', 'P0', 'TestPulse', 'UserTrg', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn', 'GPIO']] Defines the source for the Acquisition Trigger, which is the signal that opens the acquisition window and saves the waveforms in the memory buffers.
   busyinsource: SIN # (STRING) [['Disabled', 'SIN', 'GPIO', 'LVDS']] This parameter defines the source of the Busy Input.
   clocksource:  # (STRING) [['Internal', 'FPClkIn']] Source of the system clock.
   dacoutchselect: 0 # (NUMBER) [[]] When the DACoutMode is set to ChInput, the DAC reproduces the inputs signal received by a selected channel
