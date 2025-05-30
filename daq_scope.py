@@ -47,28 +47,48 @@ def main():
 
     gen_settings = config.get("general_settings", {})
     channel_settings = config.get("channel_settings", {})
-    ch_list = []
+    all_active_channels = set()
 
     for group_name, group_dict in channel_settings.items():
-        channel_list = group_dict.get("channel_list")
+        channels_str = group_dict.get("channels")
         is_enabled = group_dict.get("chenable")
-        if channel_list is None:
-            print(f"WARNING: 'channel_list' missing for group '{group_name}'. Skipping.")
+        if channels_str is None:
+            print(f"WARNING: 'channels' key missing for group '{group_name}'. Skipping.")
             continue
         if not is_enabled:
             print(f"Group '{group_name}' is DISABLED. Skipping channels.")
             continue
-        channel_list = eval(channel_list)
-        group_dict["channel_list"] = [ch for ch in channel_list]
-        for ch in channel_list:
-            ch_list.append(ch)
+        group_channels = []
+        if ".." in channels_str:
+            try:
+                limits = channels_str.split("..")
+                if len(limits) != 2:
+                    print(f"WARNING: Invalid format '{channels_str}' for '{group_name}'. Expected 'start..end'.")
+                    continue
+                start_channel = int(limits[0])
+                end_channel = int(limits[1])
+                if start_channel > end_channel:
+                    print(f"WARNING: Invalid range '{channels_str}' for '{group_name}'. Start is greater than end.")
+                    continue
+                group_channels = list(range(start_channel, end_channel + 1))
+            except ValueError:
+                print(f"ERROR: Could not parse '{channels_str}' for '{group_name}'. Ensure start and end are integers.")
+                continue
+        else:
+            try:
+                single_channel = int(channels_str)
+                group_channels = [single_channel]
+            except ValueError:
+                print(f"ERROR: Could not parse channel '{channels_str}' for '{group_name}'. Ensure is integer.")
+                continue
+        group_dict["channel_list"] = group_channels
+        all_active_channels.update(group_channels)
 
-    ch_list = sorted(list(ch_list))
-    active_ch = len(ch_list)
-    total_ch = int(ch_list[-1]+1)
+    channel_list = sorted(list(all_active_channels))
+    active_ch_count = len(channel_list)
 
-    print(f"Total active channels: {active_ch}")
-    print(f"Active channels list: {ch_list}")
+    print(f"Total active channels: {active_ch_count}")
+    print(f"Active channels list: {channel_list}")
 
     record_length = gen_settings.get("record_length", 4084)
     pretrigger = gen_settings.get("pretrigger", 2042)
@@ -93,16 +113,9 @@ def main():
     timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
     current_file = get_new_filename(base_name, timestamp_str)
 
-    data_format = [
-        {"name": "EVENT_SIZE", "type": "SIZE_T"},
-        {"name": "TIMESTAMP", "type": "U64"},
-        {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [total_ch, record_length]},
-        {"name": "WAVEFORM_SIZE", "type": "U64", "dim": 1, "shape": [total_ch]},
-    ]
-
     temperature_buffer = []
-    waveform_buffer = np.full((active_ch, buffer_size, record_length), 0, dtype=np.uint16)
-    timestamp_buffer = np.full((active_ch, buffer_size), 0, dtype=np.uint64)
+    waveform_buffer = np.full((active_ch_count, buffer_size, record_length), 0, dtype=np.uint16)
+    timestamp_buffer = np.full((active_ch_count, buffer_size), 0, dtype=np.uint64)
 
     event_counter = buffer_counter = 0
     start_time = time.time()
@@ -112,14 +125,21 @@ def main():
 
         fw_type = dig.par.fwtype.value
         fw_ver = dig.par.fpga_fwver.value
-        print("Firmware",fw_type, fw_ver)
+        tot_channels = int(dig.par.numch.value)
+        print("\nFirmware",fw_type, fw_ver)
 
-        n_ch = int(dig.par.numch.value)
+        data_format = [
+            {"name": "EVENT_SIZE", "type": "SIZE_T"},
+            {"name": "TIMESTAMP", "type": "U64"},
+            {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [tot_channels, record_length]},
+            {"name": "WAVEFORM_SIZE", "type": "U64", "dim": 1, "shape": [tot_channels]},
+        ]
+
         adc_samplrate_msps = float(dig.par.adc_samplrate.value)  # in Msps
         adc_n_bits = int(dig.par.adc_nbit.value)
         sampling_period_ns = int(1e3 / adc_samplrate_msps)
         
-        #print(f"Sampling rate = {adc_samplrate_msps} MHz, n. bit = {adc_n_bits}, Sampling period = {sampling_period_ns} ns")
+        print(f"Sampling rate = {adc_samplrate_msps} MHz\nn. bit = {adc_n_bits}\nSampling period = {sampling_period_ns} ns")
 
         nch = int(dig.par.NumCh.value)
         dig.par.iolevel.value = "TTL"
@@ -127,19 +147,35 @@ def main():
         dig.par.recordlengths.value = str(record_length)
         dig.par.pretriggers.value = str(pretrigger)
 
+        print("\nSetting channel parameters")
         for ch in dig.ch:
-            ch_n = int(str(ch).split("/")[-1])
-            if ch_n < total_ch:
-                ch.par.chenable.value = "TRUE"
-                for group_name, group_dict in channel_settings.items():
-                    if ch_n in group_dict["channel_list"]:
-                        print(f"Settings for {ch} from {group_name}")
-                        for par, par_dict in group_dict.items():
-                            if par == "channel_list": continue
-                            ch.par[par].value = str(par_dict)
-                            #print(ch,par,ch.par[par].value)
-            else:
+            try:
+                ch_number_str = str(ch).split("/")[-1]
+                ch_number = int(ch_number_str)
+            except (ValueError, IndexError):
+                print(f"WARNING: Could not extract channel number from '{ch}'")
+                continue
+            if hasattr(ch.par, 'chenable'):
                 ch.par.chenable.value = "FALSE"
+            else:
+                print(f"WARNING: Channel {ch_number} does not have a 'chenable' parameter")
+    
+            for group_name, group_dict in channel_settings.items():
+                if "channel_list" not in group_dict or not isinstance(group_dict["channel_list"], list):
+                    print(f"WARNING: Group '{group_name}' is missing or has an invalid 'channel_list'.")
+                    continue
+                if ch_number in group_dict["channel_list"]:
+                    print(f"--- Applying settings for channel {ch_number} from group '{group_name}' ---")
+    
+                    for param_name, param_value_raw in group_dict.items():
+                        if param_name in ["channel_list", "channels"]:
+                            continue
+                        if hasattr(ch.par, param_name):
+                            value_to_set = str(param_value_raw)
+                            print(f"  {ch}: Setting {param_name} to '{value_to_set}'")
+                            ch.par[param_name].value = value_to_set
+                        else:
+                            print(f"  WARNING: Parameter '{param_name}' not found on channel {ch_number}. Skipping.")
 
         endpoint = dig.endpoint["scope"]
         data = endpoint.set_read_data_format(data_format)
@@ -166,11 +202,11 @@ def main():
             waveform = data[2].value
             timestamp = data[1].value
 
-            if waveform.shape[0] < active_ch or waveform.shape[1] != record_length:
-                print(f"[WARNING] Invalid waveform shape: {waveform.shape} (expected at least {active_ch} x {record_length})")
+            if waveform.shape[0] < active_ch_count or waveform.shape[1] != record_length:
+                print(f"[WARNING] Invalid waveform shape: {waveform.shape} (expected at least {active_ch_count} x {record_length})")
                 continue
             
-            for i, ch in enumerate(ch_list):
+            for i, ch in enumerate(channel_list):
                 waveform_buffer[i, buffer_counter, :] = waveform[ch]
                 timestamp_buffer[i, buffer_counter] = np.uint64(timestamp)
 
@@ -183,7 +219,7 @@ def main():
 
             if buffer_counter >= buffer_size:
                 print(f"...writing current file: {current_file}, total events {event_counter}")
-                for i, ch in enumerate(ch_list):
+                for i, ch in enumerate(channel_list):
                     if waveform_buffer[i].ndim != 2 or waveform_buffer[i].shape[1] != record_length:
                         print(f"[ERROR] Buffer shape mismatch: {waveform_buffer[i].shape}")
                         continue
