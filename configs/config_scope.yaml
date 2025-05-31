@@ -72,7 +72,7 @@ channel_settings:
     triggerthr: 100 # (NUMBER) [] Threshold value in ADC counts
     triggerthrmode: Relative # (STRING) ['Relative', 'Absolute'] Defines whether the trigger threshold is relative to the baseline or absolute. Used also by ChSupprThr.
   group2:
-    channels: "3..4"
+    channels: "3..14"
     chenable: True # (STRING) ['True', 'False'] Enable channel for the acquisition. When the channel is disabled, it doesn't give any data and its self-trigger is off.
     chsupprsamplesoverthreshold: 1 # (NUMBER) [] Samples over thredhold for channel suppression
     chsupprthr: 0 # (NUMBER) [] Threshold for channel suppression. Configuration parameters TriggerThrMode and SelfTriggerEdge shared with TriggerThr.
