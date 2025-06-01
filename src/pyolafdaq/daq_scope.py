@@ -186,7 +186,7 @@ def main():
             timestamp = data[0].value
             trigger_id = data[1].value
             waveform = data[2].value
-            print(trigger_id)
+
             if waveform.shape[0] < active_ch_count or waveform.shape[1] != recordlengths:
                 print(f"[WARNING] Invalid waveform shape: {waveform.shape} (expected {active_ch_count} x {recordlengths})")
                 continue

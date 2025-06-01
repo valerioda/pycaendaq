@@ -12,7 +12,7 @@ A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer co
 
 ## Installation
 
-To install py-olaf-daq, follow these steps. It's recommended to use a virtual environment.
+To install pyolafdaq, follow these steps. It's recommended to use a virtual environment.
 
 Clone the repository:
 ```console
@@ -23,23 +23,23 @@ pip install .
 
 ## Usage
 Command-Line Interface (CLI)
-The olaf-daq command allows you to control the digitizer directly.
+The daq-scope command allows you to control the digitizer directly.
 Example:
 To start an acquisition using a configuration file, saving to an output file:
 ```console
-olaf-daq -a dig2://caendgtz-usb-52696 -c config.yaml -o /tmp/my_daq_data
+daq-scope -a dig2://caendgtz-usb-52696 -c config.yaml -o /tmp/my_daq_data
 ```
 
 For more options, use the --help flag:
 ```console
-olaf-daq --help
+daq-scope --help
 ```
 
 ## Web Interface
-The olaf-daq-web command launches the Flask web application, providing a graphical interface for DAQ control and monitoring.
+The daq-web-app command launches the Flask web application, providing a graphical interface for DAQ control and monitoring.
 1. Start the web application:
 ```console
-olaf-daq-web
+daq-web-app
 ```
 The application will typically run on http://127.0.0.1:44500/. Open this URL in your web browser.
 
@@ -47,7 +47,7 @@ The application will typically run on http://127.0.0.1:44500/. Open this URL in 
   - Data Acquisition Tab: Configure digitizer address, config file, output file, and acquisition parameters. Start and stop acquisitions. View live logs from the DAQ process.
   - Waveform Plotting Tab: Plot waveforms (first 10 events, last event, or FFT) from the most recently acquired LH5 file.
 
-Important: The web application relies on daq_scope.py being able to run as a subprocess. Ensure your config.yaml and output directories are accessible from where the olaf-daq-web command is executed.
+Important: The web application relies on daq_scope.py being able to run as a subprocess. Ensure your config.yaml and output directories are accessible from where the daq-web-app command is executed.
 
 ## Project Structure
 The project follows a standard src layout:
