@@ -16,7 +16,7 @@ To install py-olaf-daq, follow these steps. It's recommended to use a virtual en
 
 Clone the repository:
 ```console
-git clone https://github.com/valerioda/py-olaf-daq.git
+git clone git@github.com:valerioda/py-olaf-daq.git
 cd py-olaf-daq
 pip install .
 ```
