@@ -113,7 +113,7 @@ def main():
         timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
         current_file = get_new_filename(base_name, timestamp_str)
 
-    event_counter = buffer_counter = 0
+    buffer_counter = 0
     start_time = time.time()
     start_timestamp = time.time_ns()
 
@@ -171,7 +171,7 @@ def main():
         print("\nStarting acquisition...")
         while True:
             if "SwTrg" in acqtriggersource:
-                time.sleep(1 / software_rate)
+                #time.sleep(1 / software_rate)
                 dig.cmd.sendswtrigger()
 
             try:
@@ -186,7 +186,7 @@ def main():
             timestamp = data[0].value
             trigger_id = data[1].value
             waveform = data[2].value
-
+            print(trigger_id)
             if waveform.shape[0] < active_ch_count or waveform.shape[1] != recordlengths:
                 print(f"[WARNING] Invalid waveform shape: {waveform.shape} (expected {active_ch_count} x {recordlengths})")
                 continue
@@ -194,21 +194,20 @@ def main():
             for i, ch in enumerate(channel_list):
                 waveform_buffer[i, buffer_counter, :] = waveform[ch]
                 timestamp_buffer[i, buffer_counter] = np.uint64(start_timestamp+timestamp)
-                ev_number_buffer[i, buffer_counter] = event_counter
+                ev_number_buffer[i, buffer_counter] = trigger_id
 
             if save_temperature:
                 temp_values = [float(dig.get_value(f"/par/{name}")) for name in temp_names]
                 temperature_buffer.append(temp_values)
 
-            event_counter += 1
             buffer_counter += 1
             
-            if (event_counter % interval_stats) == 0:
-                print_stats(dig, start_time, event_counter)
+            if (trigger_id % interval_stats) == 0:
+                print_stats(dig, start_time, trigger_id)
 
             if buffer_counter >= buffer_size:
                 if save_enabled:
-                    print(f"...writing current file: {current_file}, total events {event_counter}")
+                    print(f"...writing current file: {current_file}, total events {trigger_id}")
                     for i, ch in enumerate(channel_list):
                         if waveform_buffer[i].ndim != 2 or waveform_buffer[i].shape[1] != recordlengths:
                             print(f"[ERROR] Buffer shape mismatch: {waveform_buffer[i].shape}")
@@ -251,13 +250,13 @@ def main():
 
                 buffer_counter = 0
 
-            if total_events and event_counter >= total_events:
+            if total_events and trigger_id >= total_events:
                 print("Reached target number of events. Stopping.")
-                print_stats(dig, start_time, event_counter)
+                print_stats(dig, start_time, trigger_id)
                 break
             if max_duration and (time.time() - start_time) >= max_duration:
                 print("Reached max acquisition time. Stopping.")
-                print_stats(dig, start_time, event_counter)
+                print_stats(dig, start_time, trigger_id)
                 break
 
         dig.cmd.disarmacquisition()
