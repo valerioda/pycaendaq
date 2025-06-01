@@ -6,3 +6,9 @@
 *#
 tmp/*
 logs/*
+build/
+develop-eggs/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
