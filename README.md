@@ -65,7 +65,7 @@ py-olaf-daq/
 └── configs/             # Example configuration file
 ```
 
-##Dependencies
+## Dependencies
 
 The core dependencies for py-olaf-daq include:
 - numpy: For numerical operations.
