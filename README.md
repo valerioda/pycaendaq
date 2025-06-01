@@ -7,11 +7,14 @@ LH5 Data Saving: Saves acquired data in the LH5 format for efficient storage and
 Real-time Monitoring: Command-line output provides live status updates during acquisition.
 Web-based Interface: A Flask-based web application for starting/stopping acquisition, viewing logs, and plotting waveforms (including FFTs) from acquired data.
 Responsive Plotting: Generates and displays plots of acquired waveforms directly in the web browser.
+
 Installation
+
 To install py-olaf-daq, follow these steps. It's recommended to use a virtual environment.
+
 Clone the repository:
-git clone https://github.com/valerioda/py-olaf-daq.git
-cd py-olaf-daq
+- git clone https://github.com/valerioda/py-olaf-daq.git
+- cd py-olaf-daq
 
 
 Create a virtual environment (recommended):
