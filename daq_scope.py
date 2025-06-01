@@ -134,6 +134,7 @@ def main():
         recordlengths = int(gen_settings["recordlengths"])
         acqtriggersource = gen_settings["acqtriggersource"]
         tot_channels = int(dig.par.numch.value)
+        sampling_period_ns = int(1e3 / float(dig.par.adc_samplrate.value))
 
         for ch in dig.ch:
             ch.par.chenable.value = "FALSE"
@@ -220,7 +221,7 @@ def main():
                         wf = WaveformTable(
                             size=buffer_size,
                             t0=Array([0]*buffer_size, attrs={"datatype": "array<1>{real}", "units": "ns"}),
-                            dt=Array([1]*buffer_size, attrs={"datatype": "array<1>{real}", "units": "ns"}),
+                            dt=Array([sampling_period_ns]*buffer_size, attrs={"datatype": "array<1>{real}", "units": "ns"}),
                             values=values,
                             values_units="ADC"
                         )

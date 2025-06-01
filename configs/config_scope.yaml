@@ -1,9 +1,9 @@
 general_settings:
-  recordlengths: 4084
-  pretriggers: 2042
-  software_trigger_rate: 100 # Hz
+  recordlengths: 4084 #samples [4, 10485760]
+  pretriggers: 2042 # samples [0, 2042]
+  software_trigger_rate: 10 # Hz
   max_file_size_mb: 100
-  buffer_size: 500
+  buffer_size: 50
   interval_stats: 200
   iolevel: TTL # (STRING) [['NIM', 'TTL']]
   acqtriggersource: SwTrg # (STRING) [['TrgIn', 'P0', 'TestPulse', 'UserTrg', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn', 'GPIO']] Defines the source for the Acquisition Trigger, which is the signal that opens the acquisition window and saves the waveforms in the memory buffers.
@@ -58,7 +58,7 @@ general_settings:
   volatileclockoutdelay:  # (NUMBER) [[]] Sets the delay of the clock output with respect to the input reference clock.
 channel_settings:
   group1:
-    channels: "0"
+    channels: "0..15"
     chenable: True # (STRING) ['True', 'False'] Enable channel for the acquisition. When the channel is disabled, it doesn't give any data and its self-trigger is off.
     chsupprsamplesoverthreshold: 1 # (NUMBER) [] Samples over thredhold for channel suppression
     chsupprthr: 0 # (NUMBER) [] Threshold for channel suppression. Configuration parameters TriggerThrMode and SelfTriggerEdge shared with TriggerThr.
@@ -72,16 +72,16 @@ channel_settings:
     triggerthr: 100 # (NUMBER) [] Threshold value in ADC counts
     triggerthrmode: Relative # (STRING) ['Relative', 'Absolute'] Defines whether the trigger threshold is relative to the baseline or absolute. Used also by ChSupprThr.
   group2:
-    channels: "3..14"
-    chenable: True # (STRING) ['True', 'False'] Enable channel for the acquisition. When the channel is disabled, it doesn't give any data and its self-trigger is off.
-    chsupprsamplesoverthreshold: 1 # (NUMBER) [] Samples over thredhold for channel suppression
-    chsupprthr: 0 # (NUMBER) [] Threshold for channel suppression. Configuration parameters TriggerThrMode and SelfTriggerEdge shared with TriggerThr.
-    dcoffset: 50 # (NUMBER) [] A constant DC offset (controlled by a 16 bit DAC) is added to the analog input in order to adjust the position of the signal baseline.
-    itlconnect: Disabled # (STRING) ['Disabled', 'ITLA', 'ITLB'] Determine if the channel partecipate to ITLA or ITLB.
-    overthresholdvetowidth: 0 # (NUMBER) [] Veto width to discard triggers when crossing the threshold in the opposite direction to the trigger one
-    samplesoverthreshold: 1 # (NUMBER) [] Samples over threshold
-    selftriggeredge: RISE # (STRING) ['RISE', 'FALL'] The self-trigger can be issued on either the rising or falling crossing of the threshold. Used also by ChSupprThr.
-    selftriggerwidth: 8 # (STRING) [] Width of the self-trigger. 0 means linear mode
-    signaloffset: 0 # (NUMBER) [] Offset of the input signal.
-    triggerthr: 0 # (NUMBER) [] Threshold value in ADC counts. The value is relative to the baseline.
-    triggerthrmode: Relative # (STRING) ['Relative', 'Absolute'] Defines whether the trigger threshold is relative to the baseline or absolute. Used also by ChSupprThr.
+    channels: "16..31"
+    chenable: True
+    chsupprsamplesoverthreshold: 1 
+    chsupprthr: 0
+    dcoffset: 50.
+    itlconnect: Disabled
+    overthresholdvetowidth: 0
+    samplesoverthreshold: 1
+    selftriggeredge: RISE
+    selftriggerwidth: 8
+    signaloffset: 0
+    triggerthr: 0
+    triggerthrmode: Relative

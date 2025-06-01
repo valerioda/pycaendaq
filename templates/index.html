@@ -117,13 +117,15 @@
         .button-group button#stopButton:hover:not(:disabled) {
             background-color: #c82333;
         }
-        .button-group button#generatePlotButton,
-        .button-group button#plotLastAcquisitionButton {
+        .button-group button#plotLastAcquisitionButton,
+        .button-group button#livePlotButton,
+        .button-group button#plotFFTButton { /* Added plotFFTButton */
             background-color: #007bff;
             color: white;
         }
-        .button-group button#generatePlotButton:hover:not(:disabled),
-        .button-group button#plotLastAcquisitionButton:hover:not(:disabled) {
+        .button-group button#plotLastAcquisitionButton:hover:not(:disabled),
+        .button-group button#livePlotButton:hover:not(:disabled),
+        .button-group button#plotFFTButton:hover:not(:disabled) { /* Added plotFFTButton */
             background-color: #0056b3;
         }
         .button-group button:disabled {
@@ -207,19 +209,18 @@
 
             <div id="plottingTab" class="tab-content">
                 <h1>Waveform Plotting</h1>
-                <p>Option 1: Plot a specific LH5 file</p>
-                <div class="form-group">
-                    <label for="lh5_file_path">LH5 File Path:</label>
-                    <input type="text" id="lh5_file_path" name="lh5_file_path" value="../tmp/test_app_YYYYMMDDTHHMMSSZ.lh5">
-                </div>
                 <div class="button-group">
-                    <button type="button" id="generatePlotButton">Generate Plot from Path</button>
                     <button type="button" id="plotLastAcquisitionButton">Plot Last Acquisition</button>
+                    <button type="button" id="plotFFTButton">Plot FFT of Last Acquisition</button> <button type="button" id="livePlotButton">LIVE</button>
+                </div>
+                <div class="form-group">
+                    <label for="lh5_file_path">Last LH5 File Path:</label>
+                    <input type="text" id="lh5_file_path" name="lh5_file_path" value="../tmp/test_app_YYYYMMDDTHHMMSSZ.lh5" readonly>
                 </div>
                 <h2>Plot Status</h2>
-                <div id="plotStatusMessage">Enter an LH5 file path or click 'Plot Last Acquisition'.</div>
+                <div id="plotStatusMessage">Click 'Plot Last Acquisition' to generate a plot or 'LIVE' for continuous updates.</div>
                 <div id="waveformPlot">
-                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -231,13 +232,15 @@
         const daqForm = document.getElementById('daqForm');
 
         const lh5FilePathInput = document.getElementById('lh5_file_path');
-        const generatePlotButton = document.getElementById('generatePlotButton');
         const plotLastAcquisitionButton = document.getElementById('plotLastAcquisitionButton');
+        const plotFFTButton = document.getElementById('plotFFTButton'); // NEW
+        const livePlotButton = document.getElementById('livePlotButton');
         const plotStatusMessage = document.getElementById('plotStatusMessage');
         const waveformPlotDiv = document.getElementById('waveformPlot');
 
 
         let eventSource = null;
+        let livePlotInterval = null;
 
         function showStatus(message, type = '') {
             const now = new Date();
@@ -247,10 +250,20 @@
             statusMessage.scrollTop = statusMessage.scrollHeight;
         }
 
-        function showPlotStatus(message, type = '') {
-            plotStatusMessage.textContent = message;
+        function showPlotStatus(message, type = '', append = false) {
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString() + '.' + String(now.getMilliseconds()).padStart(3, '0');
+            const formattedMessage = `[${timestamp}] ${message}`;
+
+            if (append) {
+                plotStatusMessage.innerHTML += formattedMessage + '\n';
+            } else {
+                plotStatusMessage.innerHTML = formattedMessage;
+            }
             plotStatusMessage.className = type;
+            plotStatusMessage.scrollTop = plotStatusMessage.scrollHeight;
         }
+
 
         startButton.addEventListener('click', async () => {
             startButton.disabled = true;
@@ -342,12 +355,17 @@
             }
         });
 
-        async function generatePlot(lh5FilePath = null) {
-            showPlotStatus('Generating plot...', '');
-            waveformPlotDiv.innerHTML = '';
+        // Modified generatePlot function to accept a 'plotLast' and 'plotFFT' parameter
+        async function generatePlot(lh5FilePath = null, isLive = false, plotLast = false, plotFFT = false) { // MODIFIED
+            if (!isLive) {
+                showPlotStatus('Generating plot...', '');
+                waveformPlotDiv.innerHTML = '';
+            } else {
+                showPlotStatus('Fetching live plot...', '', true);
+            }
 
             try {
-                const requestBody = lh5FilePath ? { lh5_file: lh5FilePath } : {};
+                const requestBody = { lh5_file: lh5FilePath, plot_last: plotLast, plot_fft: plotFFT }; // MODIFIED
 
                 const response = await fetch('/plot_waveforms', {
                     method: 'POST',
@@ -359,54 +377,94 @@
 
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
-                    // NEW: Read the custom header
                     const resolvedFilePath = response.headers.get('X-LH5-File-Path');
                     if (resolvedFilePath) {
-                        lh5FilePathInput.value = resolvedFilePath; // Update the input field
+                        lh5FilePathInput.value = resolvedFilePath;
                     }
 
                     if (contentType && contentType.includes('image/png')) {
                         const imageBlob = await response.blob();
                         const imageUrl = URL.createObjectURL(imageBlob);
 
+                        while (waveformPlotDiv.firstChild) {
+                            waveformPlotDiv.removeChild(waveformPlotDiv.firstChild);
+                        }
+
                         const img = document.createElement('img');
                         img.src = imageUrl;
                         img.alt = 'Waveform Plot';
                         waveformPlotDiv.appendChild(img);
-                        showPlotStatus('Waveforms plotted successfully.', 'success');
+                        if (!isLive) {
+                            showPlotStatus('Waveforms plotted successfully.', 'success');
+                        } else {
+                            showPlotStatus('Live plot updated.', 'success', true);
+                        }
                     } else if (contentType && contentType.includes('application/json')) {
                         const result = await response.json();
-                        showPlotStatus(`Error generating plot: ${result.message || 'Unknown error.'}`, 'error');
+                        showPlotStatus(`Error generating plot: ${result.message || 'Unknown error.'}`, 'error', isLive);
                     } else {
-                        showPlotStatus('Unexpected response from server.', 'error');
+                        showPlotStatus('Unexpected response from server.', 'error', isLive);
                     }
                 } else {
                     const errorText = await response.text();
                     try {
                         const errorJson = JSON.parse(errorText);
-                        showPlotStatus(`Error (${response.status}): ${errorJson.message || 'Server error.'}`, 'error');
+                        showPlotStatus(`Error (${response.status}): ${errorJson.message || 'Server error.'}`, 'error', isLive);
                     } catch (e) {
-                        showPlotStatus(`Error (${response.status}): ${errorText || 'Server error.'}`, 'error');
+                        showPlotStatus(`Error (${response.status}): ${errorText || 'Server error.'}`, 'error', isLive);
                     }
                 }
             } catch (error) {
                 console.error('Fetch error:', error);
-                showPlotStatus(`Network error: ${error.message}. Could not generate plot.`, 'error');
+                showPlotStatus(`Network error: ${error.message}. Could not generate plot.`, 'error', isLive);
             }
         }
 
-        generatePlotButton.addEventListener('click', () => {
-            const lh5FilePath = lh5FilePathInput.value;
-            if (!lh5FilePath) {
-                showPlotStatus('Please enter an LH5 file path.', 'error');
-                return;
+        // Event listener for "Plot Last Acquisition" button (plots first 10 events)
+        plotLastAcquisitionButton.addEventListener('click', () => {
+            if (livePlotInterval) {
+                clearInterval(livePlotInterval);
+                livePlotInterval = null;
+                livePlotButton.textContent = "LIVE";
+                showPlotStatus('Live plotting stopped.', '');
             }
-            generatePlot(lh5FilePath);
+            // Call generatePlot with null lh5FilePath to trigger automatic latest file detection
+            generatePlot(null, false, false, false); // plotLast: false, plotFFT: false for first 10 events
         });
 
-        plotLastAcquisitionButton.addEventListener('click', () => {
-            generatePlot();
+        // Event listener for "Plot FFT of Last Acquisition" button (NEW)
+        plotFFTButton.addEventListener('click', () => {
+            if (livePlotInterval) {
+                clearInterval(livePlotInterval);
+                livePlotInterval = null;
+                livePlotButton.textContent = "LIVE";
+                showPlotStatus('Live plotting stopped.', '');
+            }
+            // Call generatePlot with plotFFT: true
+            generatePlot(null, false, false, true); // plotLast: false, plotFFT: true
         });
+
+        // Event listener for "LIVE" button (plots last event repeatedly)
+        livePlotButton.addEventListener('click', () => {
+            if (livePlotInterval) {
+                // Stop live plotting
+                clearInterval(livePlotInterval);
+                livePlotInterval = null;
+                livePlotButton.textContent = "LIVE";
+                showPlotStatus('Live plotting stopped.', '');
+            } else {
+                // Start live plotting
+                showPlotStatus('Starting live plot updates (last event)...', '');
+                waveformPlotDiv.innerHTML = ''; // Clear previous plot
+                // Initial plot immediately, requesting only the last event
+                generatePlot(null, true, true, false); // Pass true for live updates and plotLast, plotFFT: false
+                livePlotInterval = setInterval(() => {
+                    generatePlot(null, true, true, false); // Pass true for live updates and plotLast, plotFFT: false
+                }, 5000); // Update every 5 seconds
+                livePlotButton.textContent = "STOP LIVE";
+            }
+        });
+
 
         function openTab(tabId) {
             const tabContents = document.querySelectorAll('.tab-content');

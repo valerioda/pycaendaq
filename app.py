@@ -6,13 +6,14 @@ import time
 import signal
 import re
 import io
-import logging # Import logging module
-from datetime import datetime # Import datetime for date-based log files
+import logging
+from datetime import datetime
 
 from flask import Flask, render_template, request, jsonify, Response, send_file
 import matplotlib.pyplot as plt
 import lgdo.lh5 as lh5
 import numpy as np
+from scipy.signal import periodogram
 
 
 app = Flask(__name__)
@@ -43,6 +44,7 @@ daq_process = None
 output_queue = queue.Queue() # This queue will now be fed by messages passed through the logger
 output_thread = None
 process_lock = threading.Lock()
+total_channels = 64
 
 # Global to store the base name of the last acquired file
 last_output_file_basename = None
@@ -262,6 +264,8 @@ def find_latest_lh5_file(base_path):
 def plot_waveforms():
     data = request.json
     lh5_file_param = data.get('lh5_file')
+    plot_last = data.get('plot_last', False)
+    plot_fft = data.get('plot_fft', False)
 
     resolved_lh5_file = None
 
@@ -271,7 +275,7 @@ def plot_waveforms():
             resolved_lh5_file = find_latest_lh5_file(last_output_file_basename)
             if not resolved_lh5_file:
                 app_logger.error(f"No recent LH5 file found matching '{last_output_file_basename}_YYYYMMDDTHHMMSSZ.lh5'.")
-                return jsonify({'status': 'error', 'message': f"No recent LH5 file found matching '{last_output_file_basename}_YYYYMMDDTHHMMSSZ.lh5'."}), 404
+                return jsonify({'status': 'error', 'message': f"No recent LH5 file found matching '{last_output_file_basename}_YYYYMMSSZ.lh5'."}), 404
             app_logger.info(f"Auto-discovered latest LH5 file: {resolved_lh5_file}")
         else:
             app_logger.error('No LH5 file path provided and no previous acquisition found to infer from.')
@@ -292,48 +296,97 @@ def plot_waveforms():
         channels = lh5.ls(abs_lh5_file)
 
         plot_channels = []
-        for i in range(64):
+        for i in range(total_channels):
             chn = f"ch{i:03d}"
             if chn in channels:
                 plot_channels.append(chn)
-            #if len(plot_channels) >= 6:
-            #    break
 
         if not plot_channels:
             app_logger.warning('No plotable channels found in the LH5 file.')
             return jsonify({'status': 'error', 'message': 'No plotable channels found in the LH5 file.'}), 400
 
-        fig, axes = plt.subplots(len(plot_channels) // 2 + (len(plot_channels) % 2 > 0), 2, figsize=(16, 6 * (len(plot_channels) // 2 + (len(plot_channels) % 2 > 0))))
+        ncols = 4
+        nrows = len(plot_channels) // ncols + (len(plot_channels) % ncols > 0)
+
+        fig, axes = plt.subplots(nrows, ncols, figsize=(24, 6 * nrows))
         axes_flat = axes.flatten()
 
         for idx, chn in enumerate(plot_channels):
             ax = axes_flat[idx]
             try:
-                raw_data = lh5.read(f"{chn}/raw", abs_lh5_file, n_rows=10)
-
-                if raw_data is None or not hasattr(raw_data, 'waveform') or raw_data.waveform is None:
-                    ax.set_title(f"{chn} (No WFs)")
-                    continue
-
-                wfs = raw_data.waveform.values.nda
-
-                if wfs.shape[1] > 0:
-                    dts = np.linspace(0, (wfs.shape[1]-1) * 0.008, wfs.shape[1])
-                    for j in range(min(10, wfs.shape[0])):
-                        wf0 = wfs[j]
-                        ax.plot(dts, wf0)
-                    ax.set_xlim(0, dts[-1])
-                    ax.set_xlabel(r"Time ($\mu$s)")
-                    ax.set_ylabel("ADC")
-                    ax.set_title(chn)
+                if plot_fft:
+                    raw_data = lh5.read(f"{chn}/raw", abs_lh5_file, n_rows=500)
+                    if raw_data is None or not hasattr(raw_data, 'waveform') or raw_data.waveform is None:
+                        ax.set_title(f"{chn} (No WFs)")
+                        continue
+                    wfs = raw_data.waveform.values.nda
+                    nev, wsize = wfs.shape
+                    dt = raw_data.waveform.dt.nda[0]
+                    rate =  1 / dt * 1e9 # rate in Hz
+                    dts = np.linspace(0, (wsize-1) * dt, wsize)
+                    for j in range(min(100, nev)):
+                        (freq, psd_tmp) = periodogram(wfs[j], rate, scaling='density')
+                        if j == 0: psd = psd_tmp
+                        else: psd += psd_tmp
+                    psd = np.array(psd / nev)
+                    freq = np.array(freq)
+                    rms = np.sqrt(np.trapz(psd,freq))
+                    ax.plot(freq[1:], psd[1:])
+                    ax.set_xscale("log")
+                    ax.set_yscale("log")
+                    ax.set_xlim(freq[1],freq[-1])
+                    ax.set_xlabel("Frequency (Hz)")
+                    ax.set_ylabel(r"Power Spectral Density ([ADC$^2$/Hz])")
+                    ax.set_title(f"{chn} (RMS = {rms:.1f} LSB)")
+    
+                elif plot_last:
+                    n_total_rows = lh5.read_n_rows(f"{chn}/raw", abs_lh5_file)
+                    if n_total_rows == 0:
+                        ax.set_title(f"{chn} (No WFs)")
+                        continue
+                    row_offset = max(0, n_total_rows - 1)
+                    raw_data = lh5.read(f"{chn}/raw", abs_lh5_file, start_row=row_offset, n_rows=1)
+                    if raw_data is None or not hasattr(raw_data, 'waveform') or raw_data.waveform is None:
+                        ax.set_title(f"{chn} (No WFs)")
+                        continue
+                    wfs = raw_data.waveform.values.nda
+                    nev, wsize = wfs.shape
+                    dt = raw_data.waveform.dt.nda[0] / 1000. # us
+                    timestamp = raw_data.timestamp.nda
+                    dts = np.linspace(0, (wsize-1) * dt, wsize)
+                    if nev == 1 and wsize > 0:
+                        ax.plot(dts, wfs[0])
+                        ax.set_xlim(0, dts[-1])
+                        ax.set_xlabel(r"Time ($\mu$s)")
+                        ax.set_ylabel("ADC")
+                        date = datetime.fromtimestamp(timestamp[0]/1e9).strftime("%Y-%m-%d %H:%M:%S")
+                        ax.set_title(f"{chn} (Last Event at {date})")
+                    else:
+                        ax.set_title(f"{chn} (No Last Event)")
                 else:
-                    ax.set_title(f"{chn} (Empty WFs)")
-
+                    raw_data = lh5.read(f"{chn}/raw", abs_lh5_file, n_rows=10)
+                    if raw_data is None or not hasattr(raw_data, 'waveform') or raw_data.waveform is None:
+                        ax.set_title(f"{chn} (No WFs)")
+                        continue
+                    wfs = raw_data.waveform.values.nda
+                    nev, wsize = wfs.shape
+                    dt = raw_data.waveform.dt.nda[0] / 1000. # us
+                    dts = np.linspace(0, (wsize-1) * dt, wsize)
+                    for j in range(min(10, nev)):
+                        ax.plot(dts, wfs[j])
+                        ax.set_xlim(0, dts[-1])
+                        ax.set_xlabel(r"Time ($\mu$s)")
+                        ax.set_ylabel("ADC")
+                    ax.set_title(f"{chn} (First {min(10, nev)} Events)")
             except Exception as plot_e:
                 app_logger.exception(f"Error plotting channel {chn}")
                 ax.set_title(f"{chn} (Error)")
                 ax.text(0.5, 0.5, "Plot Error", horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
                 continue
+
+        for i in range(len(plot_channels), len(axes_flat)):
+            fig.delaxes(axes_flat[i])
+
 
         plt.tight_layout()
 
