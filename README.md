@@ -15,44 +15,32 @@ A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer co
 To install py-olaf-daq, follow these steps. It's recommended to use a virtual environment.
 
 Clone the repository:
-- git clone https://github.com/valerioda/py-olaf-daq.git
-- cd py-olaf-daq
-
-
-Create a virtual environment (recommended):
-python -m venv venv
-source venv/bin/activate  # On Windows: `venv\Scripts\activate`
-
-
-Install build dependencies:
-pip install build
-
-
-Install the package:
-For development (editable mode, changes to source code are immediately reflected):
-pip install -e .
-
-Or, to build and install a static version:
-python -m build
-pip install dist/*.whl
-
+```console
+git clone https://github.com/valerioda/py-olaf-daq.git
+cd py-olaf-daq
+pip install .
+```
 
 ## Usage
 Command-Line Interface (CLI)
 The olaf-daq command allows you to control the digitizer directly.
 Example:
 To start an acquisition using a configuration file, saving to an output file:
+```console
 olaf-daq -a dig2://caendgtz-usb-52696 -c config.yaml -o /tmp/my_daq_data
-
+```
 
 For more options, use the --help flag:
+```console
 olaf-daq --help
-
+```
 
 ## Web Interface
 The olaf-daq-web command launches the Flask web application, providing a graphical interface for DAQ control and monitoring.
 Start the web application:
+```console
 olaf-daq-web
+```c
 
 The application will typically run on http://127.0.0.1:44500/. Open this URL in your web browser.
 Using the Web Interface:
@@ -61,6 +49,7 @@ Waveform Plotting Tab: Plot waveforms (first 10 events, last event, or FFT) from
 Important: The web application relies on daq_scope.py being able to run as a subprocess. Ensure your config.yaml and output directories are accessible from where the olaf-daq-web command is executed.
 Project Structure
 The project follows a standard src layout:
+```console
 py-olaf-daq/
 ├── src/
 │   └── py_olaf_daq/        # The actual Python package
@@ -71,17 +60,17 @@ py-olaf-daq/
 │       │   └── index.html
 ├── pyproject.toml          # Project metadata and build configuration
 ├── README.md               # This file
-├── tests/                  # Unit and integration tests
 └── configs/             # Example configuration file
+```
 
+##Dependencies
 
-Dependencies
 The core dependencies for py-olaf-daq include:
-numpy: For numerical operations.
-matplotlib: For plotting functionalities.
-pyyaml: For reading YAML configuration files.
-legend-pydataobj: For handling LH5 data.
-caen-felib: For interfacing with CAEN digitizers (ensure this library is correctly installed and configured for your hardware).
-Flask: The web framework for the user interface.
-scipy: For scientific computing, including signal processing (e.g., FFT).
+- numpy: For numerical operations.
+- matplotlib: For plotting functionalities.
+- pyyaml: For reading YAML configuration files.
+- legend-pydataobj: For handling LH5 data.
+- caen-felib: For interfacing with CAEN digitizers (ensure this library is correctly installed and configured for your hardware).
+- Flask: The web framework for the user interface.
+- scipy: For scientific computing, including signal processing (e.g., FFT).
 Dependencies are managed via pyproject.toml and installed automatically with pip.
