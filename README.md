@@ -1,6 +1,5 @@
 Py-OLAF-DAQ
 A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface.
-
 Features
 Digitizer Control: Directly interface with DAQ digitizers for data acquisition.
 Configurable Acquisition: Supports configuration via YAML files for flexible DAQ settings.
@@ -65,13 +64,10 @@ py-olaf-daq/
 │       ├── app.py          # Flask web application logic (Web UI entry point)
 │       ├── templates/      # HTML templates for the Flask app (e.g., index.html)
 │       │   └── index.html
-│       └── static/         # Static assets for the Flask app (e.g., plots)
-│           └── plots/
 ├── pyproject.toml          # Project metadata and build configuration
 ├── README.md               # This file
-├── LICENSE                 # Project license (e.g., MIT)
 ├── tests/                  # Unit and integration tests
-└── config.yaml             # Example configuration file (place in project root or specify path)
+└── configs/             # Example configuration file
 
 
 Dependencies
@@ -79,12 +75,8 @@ The core dependencies for py-olaf-daq include:
 numpy: For numerical operations.
 matplotlib: For plotting functionalities.
 pyyaml: For reading YAML configuration files.
-lgdo: For handling LH5 data.
+legend-pydataobj: For handling LH5 data.
 caen-felib: For interfacing with CAEN digitizers (ensure this library is correctly installed and configured for your hardware).
 Flask: The web framework for the user interface.
 scipy: For scientific computing, including signal processing (e.g., FFT).
 Dependencies are managed via pyproject.toml and installed automatically with pip.
-License
-This project is licensed under the MIT License - see the LICENSE file for details.
-Contributing
-Contributions are welcome! Please feel free t
