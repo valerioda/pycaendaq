@@ -1,4 +1,4 @@
-#Py-OLAF-DAQ
+# Py-OLAF-DAQ
 
 A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface.
 Features
@@ -9,7 +9,7 @@ Real-time Monitoring: Command-line output provides live status updates during ac
 Web-based Interface: A Flask-based web application for starting/stopping acquisition, viewing logs, and plotting waveforms (including FFTs) from acquired data.
 Responsive Plotting: Generates and displays plots of acquired waveforms directly in the web browser.
 
-Installation
+## Installation
 
 To install py-olaf-daq, follow these steps. It's recommended to use a virtual environment.
 
