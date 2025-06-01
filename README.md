@@ -1,13 +1,14 @@
 # Py-OLAF-DAQ
 
 A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface.
-Features
-Digitizer Control: Directly interface with DAQ digitizers for data acquisition.
-Configurable Acquisition: Supports configuration via YAML files for flexible DAQ settings.
-LH5 Data Saving: Saves acquired data in the LH5 format for efficient storage and analysis.
-Real-time Monitoring: Command-line output provides live status updates during acquisition.
-Web-based Interface: A Flask-based web application for starting/stopping acquisition, viewing logs, and plotting waveforms (including FFTs) from acquired data.
-Responsive Plotting: Generates and displays plots of acquired waveforms directly in the web browser.
+
+## Features
+- Digitizer Control: Directly interface with DAQ digitizers for data acquisition.
+- Configurable Acquisition: Supports configuration via YAML files for flexible DAQ settings.
+- LH5 Data Saving: Saves acquired data in the LH5 format for efficient storage and analysis.
+- Real-time Monitoring: Command-line output provides live status updates during acquisition.
+- Web-based Interface: A Flask-based web application for starting/stopping acquisition, viewing logs, and plotting waveforms (including FFTs) from acquired data.
+- Responsive Plotting: Generates and displays plots of acquired waveforms directly in the web browser.
 
 ## Installation
 
@@ -36,7 +37,7 @@ python -m build
 pip install dist/*.whl
 
 
-Usage
+## Usage
 Command-Line Interface (CLI)
 The olaf-daq command allows you to control the digitizer directly.
 Example:
@@ -48,7 +49,7 @@ For more options, use the --help flag:
 olaf-daq --help
 
 
-Web Interface
+## Web Interface
 The olaf-daq-web command launches the Flask web application, providing a graphical interface for DAQ control and monitoring.
 Start the web application:
 olaf-daq-web
