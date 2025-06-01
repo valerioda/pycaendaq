@@ -1,0 +1,85 @@
+# pyproject.toml
+
+# This file is part of the modern Python packaging standard (PEP 518 and PEP 621).
+# It defines build system requirements and project metadata.
+
+[build-system]
+# Specifies the backend used to build the package.
+# setuptools is a common choice for many Python projects.
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+
+name = "py-olaf-daq" # Package name
+version = "0.1.0"           # Initial version of your package
+description = "A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface." # Updated description
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT License" }
+
+# List of authors for the project.
+authors = [
+    { name = "Valerio D'Andrea", email = "valerio.dandrea@lngs.infn.it" },
+]
+
+maintainers = [
+    { name = "Py-OLAF-DAQ Maintainers", email = "maintainers@example.com" }, # Placeholder
+]
+
+keywords = ["OLAF", "DAQ", "Data Acquisition", "Python", "scientific", "instrumentation", "web", "flask"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research", # More specific audience
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Physics", # Example topic
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application", # For Flask app
+]
+
+
+urls = {
+    "Homepage" = "https://github.com/valerioda/py-olaf-daq",
+    "Repository" = "https://github.com/valerioda/py-olaf-daq",
+}
+
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "pyyaml",
+    "legend-pydataobj",
+    "caen-felib",
+    "Flask",
+    "scipy",
+]
+
+[project.scripts]
+olaf-daq = "py_olaf_daq.daq_scope:main"
+olaf-daq-web = "py_olaf_daq.app:run_app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["py_olaf_daq"]
+
+[tool.setuptools.packages.find]
+where = ["."] 
+include = ["py_olaf_daq*"] # Include packages starting with 'py_olaf_daq'
+
+# Data files to include with your package (e.g., configuration files, templates).
+# These will be installed alongside your package code.
+[tool.setuptools.package-data]
+"py_olaf_daq" = [
+    "data/*.json",
+    "templates/*.html", # Include HTML files in the templates directory
+    "static/*",         # Include all files in the 'static' directory (e.g., plots)
+]
+

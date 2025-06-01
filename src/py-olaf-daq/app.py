@@ -16,10 +16,15 @@ import numpy as np
 from scipy.signal import periodogram
 
 
+# When installed as a package, Flask needs to know where its templates and static files are.
+# We'll set these dynamically in the run_app function.
 app = Flask(__name__)
 
 # --- Logging Setup ---
-LOG_DIR = os.path.join(app.root_path, 'logs')
+# LOG_DIR will now be relative to the *installed* package, or a user-defined location.
+# For simplicity during development and packaging, we'll keep it relative to the app's root.
+# In a production deployment, you might want this path to be configurable or point to /var/log.
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'logs')
 os.makedirs(LOG_DIR, exist_ok=True) # Ensure log directory exists
 
 log_filename = datetime.now().strftime('%Y-%m-%d') + '.log'
@@ -49,8 +54,8 @@ total_channels = 64
 # Global to store the base name of the last acquired file
 last_output_file_basename = None
 
-PLOT_DIR = os.path.join(app.root_path, 'static', 'plots')
-os.makedirs(PLOT_DIR, exist_ok=True)
+# PLOT_DIR will be set dynamically in run_app to be relative to the installed package's static folder
+PLOT_DIR = None # Initialize as None, will be set by run_app
 
 def read_subprocess_output(process, output_q):
     """Reads stdout and stderr from the subprocess and puts them into a queue."""
@@ -105,10 +110,15 @@ def start_acquisition():
         if not config_file:
             app_logger.error('Configuration File cannot be empty.')
             return jsonify({'status': 'error', 'message': 'Configuration File cannot be empty.'}), 400
-        config_file_path = os.path.join(app.root_path, config_file)
-        if not os.path.exists(config_file_path):
+        
+        # When installed, config_file might be relative to where the app is run,
+        # or it might be a path to a config file *outside* the installed package.
+        # For now, assume it's a path the user provides that needs to be checked.
+        # If config files are also part of the package data, this logic needs adjustment.
+        if not os.path.exists(config_file):
             app_logger.error(f"Configuration file not found: {config_file}")
             return jsonify({'status': 'error', 'message': f"Configuration file not found: {config_file}"}), 400
+        
         if not out_file:
             app_logger.error('Output File Base Name cannot be empty.')
             return jsonify({'status': 'error', 'message': 'Output File Base Name cannot be empty.'}), 400
@@ -125,7 +135,10 @@ def start_acquisition():
         app_logger.info(f"Last output file basename set to: {last_output_file_basename}")
 
 
-        command = ["python", "-u", "daq_scope.py"]
+        # IMPORTANT: When running daq_scope.py as part of an installed package,
+        # you should invoke it as a module using `python -m`.
+        # This ensures Python finds it correctly within the installed package.
+        command = ["python", "-m", "py_olaf_daq.daq_scope"] # Changed from "daq_scope.py"
         command.extend(["-a", dig_address])
         command.extend(["-c", config_file])
         command.extend(["-o", out_file])
@@ -135,14 +148,14 @@ def start_acquisition():
         if n_events:
             try:
                 int(n_events)
-                command.extend(["-n", n_events])
+                command.extend(["-n", str(n_events)]) # Ensure it's a string for subprocess
             except ValueError:
                 app_logger.error('Number of Events must be an integer.')
                 return jsonify({'status': 'error', 'message': 'Number of Events must be an integer.'}), 400
         if duration:
             try:
                 int(duration)
-                command.extend(["-d", duration])
+                command.extend(["-d", str(duration)]) # Ensure it's a string for subprocess
             except ValueError:
                 app_logger.error('Duration must be an integer.')
                 return jsonify({'status': 'error', 'message': 'Duration must be an integer.'}), 400
@@ -171,8 +184,9 @@ def start_acquisition():
 
             return jsonify({'status': 'success', 'message': 'Acquisition started.'})
         except FileNotFoundError:
-            app_logger.exception('Python executable or daq_scope.py not found.')
-            return jsonify({'status': 'error', 'message': 'Python executable or daq_scope.py not found.'}), 500
+            # This error might occur if 'python' is not in PATH or if the module path is wrong.
+            app_logger.exception('Python executable or py_olaf_daq.daq_scope module not found.')
+            return jsonify({'status': 'error', 'message': 'Python executable or py_olaf_daq.daq_scope module not found.'}), 500
         except Exception as e:
             app_logger.exception(f"Failed to start acquisition: {e}")
             return jsonify({'status': 'error', 'message': f"Failed to start acquisition: {e}"}), 500
@@ -283,8 +297,14 @@ def plot_waveforms():
     else:
         resolved_lh5_file = lh5_file_param
 
+    # When the app is installed, app.root_path might point to the site-packages directory.
+    # We need to ensure paths are handled correctly.
+    # For now, assuming resolved_lh5_file is an absolute path or relative to the current working directory.
+    # If it's relative to the app's installed location, further path adjustments might be needed.
     if not os.path.isabs(resolved_lh5_file):
-        abs_lh5_file = os.path.abspath(os.path.join(app.root_path, resolved_lh5_file))
+        # This assumes the user provides relative paths from the current working directory
+        # where the 'olaf-daq-web' command is executed.
+        abs_lh5_file = os.path.abspath(resolved_lh5_file)
     else:
         abs_lh5_file = resolved_lh5_file
 
@@ -323,13 +343,13 @@ def plot_waveforms():
                     nev, wsize = wfs.shape
                     dt = raw_data.waveform.dt.nda[0]
                     rate =  1 / dt * 1e9 # rate in Hz
-                    dts = np.linspace(0, (wsize-1) * dt, wsize)
+                    #dts = np.linspace(0, (wsize-1) * dt, wsize) # Not used for FFT plot directly
+                    psd = np.zeros(wsize // 2 + 1) # Initialize PSD accumulator
                     for j in range(min(100, nev)):
-                        (freq, psd_tmp) = periodogram(wfs[j], rate, scaling='density')
-                        if j == 0: psd = psd_tmp
-                        else: psd += psd_tmp
-                    psd = np.array(psd / nev)
-                    freq = np.array(freq)
+                        freq_tmp, psd_tmp = periodogram(wfs[j], rate, scaling='density')
+                        psd += psd_tmp
+                    psd = np.array(psd / min(100, nev)) # Average PSD
+                    freq = np.array(freq_tmp)
                     rms = np.sqrt(np.trapz(psd,freq))
                     ax.plot(freq[1:], psd[1:])
                     ax.set_xscale("log")
@@ -338,7 +358,7 @@ def plot_waveforms():
                     ax.set_xlabel("Frequency (Hz)")
                     ax.set_ylabel(r"Power Spectral Density ([ADC$^2$/Hz])")
                     ax.set_title(f"{chn} (RMS = {rms:.1f} LSB)")
-    
+
                 elif plot_last:
                     n_total_rows = lh5.read_n_rows(f"{chn}/raw", abs_lh5_file)
                     if n_total_rows == 0:
@@ -363,7 +383,7 @@ def plot_waveforms():
                         ax.set_title(f"{chn} (Last Event at {date})")
                     else:
                         ax.set_title(f"{chn} (No Last Event)")
-                else:
+                else: # Plot first 10 events (default)
                     raw_data = lh5.read(f"{chn}/raw", abs_lh5_file, n_rows=10)
                     if raw_data is None or not hasattr(raw_data, 'waveform') or raw_data.waveform is None:
                         ax.set_title(f"{chn} (No WFs)")
@@ -404,11 +424,27 @@ def plot_waveforms():
         app_logger.exception(f"Error plotting waveforms: {e}")
         return jsonify({'status': 'error', 'message': f"Error plotting waveforms: {str(e)}"}), 500
 
-if __name__ == '__main__':
-    if not os.path.exists('daq_scope.py'):
-        app_logger.critical("Error: 'daq_scope.py' not found in the current directory. Please place 'daq_scope.py' alongside 'app.py'.")
-        exit(1)
+def run_app():
+    """
+    Entry point function to run the Flask web application.
+    This function should be called when the package is installed and run
+    via the 'olaf-daq-web' console script.
+    """
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    app.template_folder = os.path.join(current_dir, 'templates')
+    app.static_folder = os.path.join(current_dir, 'static')
 
-    # Use a logger for Flask's internal messages as well
-    logging.getLogger('werkzeug').setLevel(logging.INFO) # Adjust as needed
+    # Ensure the PLOT_DIR is also correctly set relative to the static folder
+    global PLOT_DIR
+    PLOT_DIR = os.path.join(app.static_folder, 'plots')
+    os.makedirs(PLOT_DIR, exist_ok=True)
+    app_logger.info(f"Flask app template_folder: {app.template_folder}")
+    app_logger.info(f"Flask app static_folder: {app.static_folder}")
+    app_logger.info(f"Flask app PLOT_DIR: {PLOT_DIR}")
+
+    app_logger.info("Starting Flask web application...")
     app.run(debug=True, port=44500)
+
+if __name__ == '__main__':
+    run_app()
+
