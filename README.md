@@ -37,17 +37,19 @@ olaf-daq --help
 
 ## Web Interface
 The olaf-daq-web command launches the Flask web application, providing a graphical interface for DAQ control and monitoring.
-Start the web application:
+1. Start the web application:
 ```console
 olaf-daq-web
-```c
-
+```
 The application will typically run on http://127.0.0.1:44500/. Open this URL in your web browser.
-Using the Web Interface:
-Data Acquisition Tab: Configure digitizer address, config file, output file, and acquisition parameters. Start and stop acquisitions. View live logs from the DAQ process.
-Waveform Plotting Tab: Plot waveforms (first 10 events, last event, or FFT) from the most recently acquired LH5 file.
+
+2. Using the Web Interface:
+  - Data Acquisition Tab: Configure digitizer address, config file, output file, and acquisition parameters. Start and stop acquisitions. View live logs from the DAQ process.
+  - Waveform Plotting Tab: Plot waveforms (first 10 events, last event, or FFT) from the most recently acquired LH5 file.
+
 Important: The web application relies on daq_scope.py being able to run as a subprocess. Ensure your config.yaml and output directories are accessible from where the olaf-daq-web command is executed.
-Project Structure
+
+## Project Structure
 The project follows a standard src layout:
 ```console
 py-olaf-daq/
