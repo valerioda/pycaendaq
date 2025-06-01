@@ -1,4 +1,4 @@
-\\Py-OLAF-DAQ
+#Py-OLAF-DAQ
 
 A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface.
 Features
