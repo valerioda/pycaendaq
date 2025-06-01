@@ -1,0 +1,3 @@
+[console_scripts]
+olaf-daq = pyolafdaq.daq_scope:main
+olaf-daq-web = pyolafdaq.app:run_app

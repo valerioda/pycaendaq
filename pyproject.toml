@@ -10,25 +10,32 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
+# Core project metadata as defined in PEP 621.
+# This section contains information about your project that will be displayed on PyPI.
 
-name = "py-olaf-daq" # Package name
+name = "pyolafdaq" # Package name changed to 'pyolafdaq'
 version = "0.1.0"           # Initial version of your package
 description = "A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface." # Updated description
-readme = "README.md"
-requires-python = ">=3.8"
-license = { text = "MIT License" }
+readme = "README.md"        # Path to your project's README file (e.g., Markdown)
+requires-python = ">=3.8"   # Minimum Python version required by your package
+license = { text = "MIT License" } # Assuming MIT License based on common practice, or specify file="LICENSE" if present
 
 # List of authors for the project.
 authors = [
-    { name = "Valerio D'Andrea", email = "valerio.dandrea@lngs.infn.it" },
+    { name = "Valerio D'Amico", email = "valerio.damico@example.com" }, # Placeholder, adjust if specific authors are known
+    # Add more authors if needed
 ]
 
+# List of maintainers for the project.
 maintainers = [
     { name = "Py-OLAF-DAQ Maintainers", email = "maintainers@example.com" }, # Placeholder
 ]
 
+# Keywords that describe your project, helping users find it.
 keywords = ["OLAF", "DAQ", "Data Acquisition", "Python", "scientific", "instrumentation", "web", "flask"]
 
+# Classifiers help categorize your project on PyPI.
+# Find a full list at https://pypi.org/classifiers/
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research", # More specific audience
@@ -46,12 +53,11 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: WSGI :: Application", # For Flask app
 ]
 
+# Project URLs for documentation, repository, etc.
+urls = {"Homepage" = "https://github.com/valerioda/pyolafdaq", "Repository" = "https://github.com/valerioda/pyolafdaq", "Bug Tracker" = "https://github.com/valerioda/pyolafdaq/issues"}
 
-urls = {
-    "Homepage" = "https://github.com/valerioda/py-olaf-daq",
-    "Repository" = "https://github.com/valerioda/py-olaf-daq",
-}
 
+# Dependencies required by your package at runtime.
 dependencies = [
     "numpy",
     "matplotlib",
@@ -62,24 +68,57 @@ dependencies = [
     "scipy",
 ]
 
+# Optional dependencies for specific features (e.g., "dev", "test", "docs").
+# Users can install these using `pip install pyolafdaq[dev]`
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "flake8",
+    "black",
+    "isort",
+    "build",
+    "twine",
+]
+docs = [
+    "sphinx",
+    "sphinx_rtd_theme",
+]
+
+# Entry points for command-line scripts or plugins.
+# IMPORTANT: Use the new package name 'pyolafdaq' here.
 [project.scripts]
-olaf-daq = "py_olaf_daq.daq_scope:main"
-olaf-daq-web = "py_olaf_daq.app:run_app"
+olaf-daq = "pyolafdaq.daq_scope:main" # Changed to 'pyolafdaq'
+olaf-daq-web = "pyolafdaq.app:run_app" # Changed to 'pyolafdaq'
 
 [tool.setuptools]
+# This line tells setuptools that the actual Python packages are located inside the 'src' directory.
 package-dir = {"" = "src"}
-packages = ["py_olaf_daq"]
 
-[tool.setuptools.packages.find]
-where = ["."] 
-include = ["py_olaf_daq*"] # Include packages starting with 'py_olaf_daq'
+# Explicitly list top-level packages.
+# The package name 'pyolafdaq' refers to the folder *inside* 'src'.
+packages = ["pyolafdaq"] # Changed to 'pyolafdaq'
 
 # Data files to include with your package (e.g., configuration files, templates).
 # These will be installed alongside your package code.
 [tool.setuptools.package-data]
-"py_olaf_daq" = [
+"pyolafdaq" = [ # Changed to 'pyolafdaq'
     "data/*.json",
     "templates/*.html", # Include HTML files in the templates directory
+    "templates/*.css",  # If you have CSS files
+    "templates/*.js",   # If you have JS files
     "static/*",         # Include all files in the 'static' directory (e.g., plots)
 ]
+
+# You can also define other tools' configurations here, e.g., pytest, black, isort.
+# [tool.pytest.ini_options]
+# addopts = "--strict-markers --strict-data-files"
+# testpaths = ["tests"]
+
+# [tool.black]
+# line-length = 88
+# target-version = ["py38"]
+
+# [tool.isort]
+# profile = "black"
+# line_length = 88
 
