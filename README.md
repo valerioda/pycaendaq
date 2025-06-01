@@ -1,4 +1,4 @@
-# Py-OLAF-DAQ
+# Py OLAF DAQ
 
 A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface.
 
@@ -16,8 +16,8 @@ To install py-olaf-daq, follow these steps. It's recommended to use a virtual en
 
 Clone the repository:
 ```console
-git clone git@github.com:valerioda/py-olaf-daq.git
-cd py-olaf-daq
+git clone git@github.com:valerioda/pyolafdaq.git
+cd pyolafdaq
 pip install .
 ```
 
@@ -52,7 +52,7 @@ Important: The web application relies on daq_scope.py being able to run as a sub
 ## Project Structure
 The project follows a standard src layout:
 ```console
-py-olaf-daq/
+pyolafdaq/
 ├── src/
 │   └── py_olaf_daq/        # The actual Python package
 │       ├── __init__.py     # Marks as a package, defines __version__
@@ -67,7 +67,7 @@ py-olaf-daq/
 
 ## Dependencies
 
-The core dependencies for py-olaf-daq include:
+The core dependencies for pyolafdaq include:
 - numpy: For numerical operations.
 - matplotlib: For plotting functionalities.
 - pyyaml: For reading YAML configuration files.
