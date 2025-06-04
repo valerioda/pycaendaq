@@ -27,7 +27,7 @@ The daq-scope command allows you to control the digitizer directly.
 Example:
 To start an acquisition using a configuration file, saving to an output file:
 ```console
-daq-scope -a dig2://caendgtz-usb-52696 -c config.yaml -o /tmp/my_daq_data
+daq-scope -a dig2://caendgtz-usb-52696 -c configs/config_scope.yaml -o /tmp/my_daq_data
 ```
 
 For more options, use the --help flag:
@@ -54,7 +54,7 @@ The project follows a standard src layout:
 ```console
 pyolafdaq/
 ├── src/
-│   └── py_olaf_daq/        # The actual Python package
+│   └── pyolafdaq/        # The actual Python package
 │       ├── __init__.py     # Marks as a package, defines __version__
 │       ├── daq_scope.py    # Main DAQ control script (CLI entry point)
 │       ├── app.py          # Flask web application logic (Web UI entry point)
