@@ -1,6 +1,6 @@
-# Py OLAF DAQ
+# Py CAEN DAQ
 
-A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface.
+A Python library for Data Acquisition (DAQ) systems, including digitizer control and a web interface.
 
 ## Features
 - Digitizer Control: Directly interface with DAQ digitizers for data acquisition.
@@ -12,12 +12,12 @@ A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer co
 
 ## Installation
 
-To install pyolafdaq, follow these steps. It's recommended to use a virtual environment.
+To install pycaendaq, follow these steps. It's recommended to use a virtual environment.
 
 Clone the repository:
 ```console
-git clone git@github.com:valerioda/pyolafdaq.git
-cd pyolafdaq
+git clone git@github.com:valerioda/pycaendaq.git
+cd pycaendaq
 pip install .
 ```
 
@@ -52,9 +52,9 @@ Important: The web application relies on daq_scope.py being able to run as a sub
 ## Project Structure
 The project follows a standard src layout:
 ```console
-pyolafdaq/
+pycaendaq/
 ├── src/
-│   └── pyolafdaq/        # The actual Python package
+│   └── pycaendaq/        # The actual Python package
 │       ├── __init__.py     # Marks as a package, defines __version__
 │       ├── daq_scope.py    # Main DAQ control script (CLI entry point)
 │       ├── app.py          # Flask web application logic (Web UI entry point)
@@ -67,7 +67,7 @@ pyolafdaq/
 
 ## Dependencies
 
-The core dependencies for pyolafdaq include:
+The core dependencies for pycaendaq include:
 - numpy: For numerical operations.
 - matplotlib: For plotting functionalities.
 - pyyaml: For reading YAML configuration files.
