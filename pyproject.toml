@@ -10,9 +10,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyolafdaq"
+name = "pycaendaq"
 version = "0.1.0"
-description = "A Python library for OLAF Data Acquisition (DAQ) systems, including digitizer control and a web interface."
+description = "A Python library for Data Acquisition (DAQ) systems, including digitizer control and a web interface."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT License" }
@@ -21,11 +21,7 @@ authors = [
     { name = "Valerio D'Andrea", email = "valerio.dandrea@lngs.infn.it" },
 ]
 
-maintainers = [
-    { name = "OLAF team", email = "olaf@infn.it" },
-]
-
-keywords = ["OLAF", "DAQ", "Data Acquisition", "Python", "scientific", "instrumentation", "web", "flask"]
+keywords = ["CAEN", "DAQ", "Data Acquisition", "Python", "scientific", "instrumentation", "web", "flask"]
 
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -44,7 +40,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: WSGI :: Application", # For Flask app
 ]
 
-urls = {"Homepage" = "https://github.com/valerioda/pyolafdaq", "Repository" = "https://github.com/valerioda/pyolafdaq", "Bug Tracker" = "https://github.com/valerioda/pyolafdaq/issues"}
+urls = {"Homepage" = "https://github.com/valerioda/pycaendaq", "Repository" = "https://github.com/valerioda/pycaendaq", "Bug Tracker" = "https://github.com/valerioda/pycaendaq/issues"}
 
 
 dependencies = [
@@ -72,15 +68,15 @@ docs = [
 ]
 
 [project.scripts]
-daq-scope = "pyolafdaq.daq_scope:main"
-daq-web-app = "pyolafdaq.app:run_app"
+daq-scope = "pycaendaq.daq_scope:main"
+daq-web-app = "pycaendaq.app:run_app"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["pyolafdaq"]
+packages = ["pycaendaq"]
 
 [tool.setuptools.package-data]
-"pyolafdaq" = [ # Changed to 'pyolafdaq'
+"pycaendaq" = [
     "data/*.json",
     "templates/*.html",
     "static/*", 
