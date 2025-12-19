@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import yaml
 import ast
+import sys
 
 from lgdo import lh5, Table, Array, WaveformTable, ArrayOfEqualSizedArrays
 from caen_felib import lib, device, error
@@ -113,6 +114,16 @@ def main():
         timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
         current_file = get_new_filename(base_name, timestamp_str)
 
+    recordlengths = int(gen_settings["recordlengths"])
+    acqtriggersource = gen_settings["acqtriggersource"]
+    tot_channels = int(dig.par.numch.value)
+    sampling_period_ns = int(1e3 / float(dig.par.adc_samplrate.value))
+    data_format = [
+        {"name": "TIMESTAMP_NS", "type": "U64"},
+        {"name": "TRIGGER_ID", "type": "U32"},
+        {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [tot_channels, recordlengths]},
+    ]
+
     buffer_counter = 0
     start_time = time.time()
     start_timestamp = time.time_ns()
@@ -131,10 +142,6 @@ def main():
                 continue
             print(f"  Setting {param_name} to {param_value}")
             dig.set_value(f"/par/{param_name}",str(param_value))
-        recordlengths = int(gen_settings["recordlengths"])
-        acqtriggersource = gen_settings["acqtriggersource"]
-        tot_channels = int(dig.par.numch.value)
-        sampling_period_ns = int(1e3 / float(dig.par.adc_samplrate.value))
 
         for ch in dig.ch:
             ch.par.chenable.value = "FALSE"
@@ -150,12 +157,6 @@ def main():
                 print(f"  /ch/{chns}: Setting {param_name} to {param_value}")
                 dig.set_value(f"/ch/{chns}/par/{param_name}",str(param_value))
 
-        # data format and endpoint
-        data_format = [
-            {"name": "TIMESTAMP_NS", "type": "U64"},
-            {"name": "TRIGGER_ID", "type": "U32"},
-            {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [tot_channels, recordlengths]},
-        ]
         endpoint = dig.endpoint["scope"]
         data = endpoint.set_read_data_format(data_format)
         dig.endpoint.par.activeendpoint.value = "scope"

@@ -1,71 +1,125 @@
 import argparse
 import os
 import time
+from datetime import datetime
 import numpy as np
 from matplotlib import pyplot as plt
+import yaml
+import ast
+import sys
 
 from lgdo import lh5, Table, Array, WaveformTable, ArrayOfEqualSizedArrays
 from caen_felib import lib, device, error
 
-dig2_scheme = "dig2"
-#dig2_authority = "caendgtz-usb-21233"
-dig2_authority = "caendgtz-usb-52696"
-dig2_query = ''
-dig2_path = ''
-dig2_uri = f'{dig2_scheme}://{dig2_authority}/{dig2_path}?{dig2_query}'
-
 
 def main():
-    par = argparse.ArgumentParser(description="save hit energies")
-    arg, st, sf = par.add_argument, "store_true", "store_false"
-    arg("-n", "--n_events", nargs=1, help="n_events")
-    arg("-o", "--out_file", nargs=1, help="out_file")
-    arg("-nc", "--n_ch", nargs=1, help="n_ch")
-    arg("-rl", "--record_length", nargs=1, help="record length in samples")
-    arg("-pt", "--pretrigger", nargs=1, help="pre trigger in samples")
-    arg("-dc", "--dc_offset", nargs=1, help="dc_offset in percentage")
-    arg("-tt", "--temperature", action=st, help="temperature")
+    par = argparse.ArgumentParser(description="Save digitizer data to LH5. Press Ctrl+C during acquisition to stop manually.")
+    arg, st = par.add_argument, "store_true"
+    arg("-a", "--dig_address", required=True, help="dig2://caendgtz-usb-66154")
+    arg("-c", "--config_file", required=True, help="Configuration file name")
+    arg("-o", "--out_file", type=str, help="Base output file name")
+    arg("-tt", "--temperature", action=st, help="Save temperature")
+    arg("-n", "--n_events", type=int, help="Total number of events to acquire")
+    arg("-d", "--duration", type=int, help="Maximum acquisition time in seconds")
+
     args = vars(par.parse_args())
 
-    if args["n_events"]:
-        nev = int(args['n_events'][0])
-    else:
-        print("Number of events not provided")
-        return
-    
+    dig_address = args["dig_address"]
     if args["out_file"]:
-        out_file = args['out_file'][0]
+        save_enabled = True
+        out_file = args["out_file"]
+        base_name = out_file.replace(".lh5", "")
     else:
-        print("Output file not provided")
-        return
+        save_enabled = False
 
-    if args["record_length"]:
-        reclen = int(args['record_length'][0])
-    else:
-        reclen = 8000
+    config = {}
+    config_file = args["config_file"]
+    try:
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        print(f"Loaded configuration from {config_file}")
+    except FileNotFoundError:
+        print(f"Error: Configuration file '{config_file}' not found.")
+        print("Please ensure 'config.yaml' is in the same directory as the script, or provide the full path.")
+        sys.exit(1)
+    except yaml.YAMLError as exc:
+        print(f"Error parsing '{config_file}': {exc}")
+        print("Please check your YAML file for syntax errors.")
+        sys.exit(1)
 
-    if args["pretrigger"]:
-        pretrg = int(args['record_length'][0])
-    else:
-        pretrg = 4000
+    data_format_dict = config.get("data_format", {})
+    gen_settings = config.get("general_settings", {})
+    channel_settings = config.get("channel_settings", {})
+    all_active_channels = set()
 
-    if args["dc_offset"]:
-        dc_offset = args['dc_offset'][0]
-    else:
-        dc_offset = f"{10}"
+    for group_name, group_dict in channel_settings.items():
+        channels_str = group_dict.get("channels")
+        is_enabled = group_dict.get("chenable")
+        if channels_str is None:
+            print(f"WARNING: 'channels' key missing for group '{group_name}'. Skipping.")
+            continue
+        if not is_enabled:
+            print(f"Group '{group_name}' is DISABLED. Skipping channels.")
+            continue
+        group_channels = []
+        if ".." in channels_str:
+            try:
+                limits = channels_str.split("..")
+                if len(limits) != 2:
+                    print(f"WARNING: Invalid format '{channels_str}' for '{group_name}'. Expected 'start..end'.")
+                    continue
+                start_channel = int(limits[0])
+                end_channel = int(limits[1])
+                if start_channel > end_channel:
+                    print(f"WARNING: Invalid range '{channels_str}' for '{group_name}'. Start is greater than end.")
+                    continue
+                group_channels = list(range(start_channel, end_channel + 1))
+            except ValueError:
+                print(f"ERROR: Could not parse '{channels_str}' for '{group_name}'. Ensure start and end are integers.")
+                continue
+        else:
+            try:
+                single_channel = int(channels_str)
+                group_channels = [single_channel]
+            except ValueError:
+                print(f"ERROR: Could not parse channel '{channels_str}' for '{group_name}'. Ensure is integer.")
+                continue
+        group_dict["channel_list"] = group_channels
+        all_active_channels.update(group_channels)
 
-    if args["temperature"]:
-        save_temperature = True
-    else:
-        save_temperature = False
-    
-    if args["n_ch"]:
-        active_ch = int(args["n_ch"][0])
-    else:
-        active_ch = 1
+    channel_list = sorted(list(all_active_channels))
+    active_ch_count = len(channel_list)
 
-    n_split = 10000
+    print(f"Total active channels: {active_ch_count}")
+    print(f"Active channels list: {channel_list}")
 
+    max_file_size_mb = gen_settings.get("max_file_size_mb", 100)
+    max_file_size_bytes = max_file_size_mb * 1024 * 1024
+    buffer_size = gen_settings.get("buffer_size", 100)
+    interval_stats = gen_settings.get("interval_stats", 100)
+    software_rate = gen_settings.get("software_trigger_rate", 1000)
+
+    save_temperature = args["temperature"]
+    total_events = args.get("n_events")
+    max_duration = args.get("duration")
+
+    if total_events is not None and buffer_size > total_events:
+        buffer_size = total_events
+
+    temp_names = [
+        "tempsensfirstadc", "tempsenshottestadc", "tempsenslastadc",
+        "tempsensairin", "tempsensairout", "tempsenscore", "tempsensdcdc"
+    ]
+
+    if save_enabled:
+        timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
+        current_file = get_new_filename(base_name, timestamp_str)
+
+    buffer_counter = 0
+    start_time = time.time()
+    start_timestamp = time.time_ns()
+
+    recordlengths = 1000
     data_format = [
         {
             'name': 'CHANNEL',
@@ -86,7 +140,7 @@ def main():
             'name': 'ANALOG_PROBE_1',
             'type': 'U16',
             'dim': 1,
-            'shape': [reclen]
+            'shape': [recordlengths]
         },
         {
             'name': 'ANALOG_PROBE_1_TYPE',
@@ -97,7 +151,7 @@ def main():
             'name': 'DIGITAL_PROBE_1',
             'type': 'U8',
             'dim': 1,
-            'shape': [reclen]
+            'shape': [recordlengths]
         },
         {
             'name': 'DIGITAL_PROBE_1_TYPE',
@@ -111,36 +165,43 @@ def main():
         }
     ]
 
-    with device.connect(dig2_uri) as dig:
-        
+    with device.connect(dig_address) as dig:
         dig.cmd.Reset()
 
-        fw_type = dig.par.fwtype.value
-        fw_ver = dig.par.fpga_fwver.value
-        print("Firmware",fw_type, fw_ver)
+        print_dig_stats(dig)
 
-        n_ch = int(dig.par.numch.value)
-        adc_samplrate_msps = float(dig.par.adc_samplrate.value)  # in Msps
-        adc_n_bits = int(dig.par.adc_nbit.value)
-        sampling_period_ns = int(1e3 / adc_samplrate_msps)
+        print(f"--- Applying general digitizer settings ---")
+        for param_name, param_value in gen_settings.items():
+            if param_name in ["software_trigger_rate","max_file_size_mb",
+                              "buffer_size","interval_stats"]:
+                continue
+            if param_value is None:
+                continue
+            print(f"  Setting {param_name} to {param_value}")
+            dig.set_value(f"/par/{param_name}",str(param_value))
+
+        for ch in dig.ch:
+            ch.par.chenable.value = "FALSE"
+        for group_name, group_dict in channel_settings.items():
+            if "channels" not in group_dict:
+                print(f"WARNING: Group '{group_name}' is missing or has an invalid 'channels'.")
+                continue
+            chns = group_dict["channels"]
+            print(f"--- Applying settings for channels {chns} of group '{group_name}' ---")
+            for param_name, param_value in group_dict.items():
+                if param_name in ["channel_list", "channels"]:
+                    continue
+                print(f"  /ch/{chns}: Setting {param_name} to {param_value}")
+                dig.set_value(f"/ch/{chns}/par/{param_name}",str(param_value))
+
+        tot_channels = int(dig.par.numch.value)
+        sampling_period_ns = int(1e3 / float(dig.par.adc_samplrate.value))
+        data_format = [
+            {"name": "TIMESTAMP_NS", "type": "U64"},
+            {"name": "TRIGGER_ID", "type": "U32"},
+            {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [tot_channels, recordlengths]},
+        ]
         
-        print(f"Sampling rate = {adc_samplrate_msps} MHz, n. bit = {adc_n_bits}, Sampling period = {sampling_period_ns} ns")
-
-        nch = int(dig.par.NumCh.value)
-        dig.par.iolevel.value = "TTL"
-        dig.par.globaltriggersource.value = "TrgIn"
-
-        print("Set channel parameters")
-        for i, ch in enumerate(dig.ch):
-            ch.par.chenable.value = "TRUE" if i < active_ch else "FALSE"
-            ch.par.eventtriggersource.value = "GLOBALTRIGGERSOURCE"
-            ch.par.wavetriggersource.value = "GLOBALTRIGGERSOURCE"
-            ch.par.chrecordlengths.value = f"{reclen}"
-            ch.par.chpretriggers.value = f"{pretrg}"
-            ch.par.waveanalogprobe0.value = "ADCINPUT"
-            ch.par.wavedigitalprobe0.value = "TRIGGER"
-            ch.par.dcoffset.value = dc_offset
-
         decoded_endpoint_path = "dpppha"
         endpoint = dig.endpoint[decoded_endpoint_path]
         data = endpoint.set_read_data_format(data_format)
@@ -173,7 +234,7 @@ def main():
             if n_current == 0: continue
 
             timestamps = np.zeros((active_ch,n_current),dtype=np.uint64)
-            wfs = np.zeros((active_ch,n_current,reclen),dtype=np.uint16)
+            wfs = np.zeros((active_ch,n_current,recordlengths),dtype=np.uint16)
 
             if save_temperature:
                 temp_names = ["tempsensfirstadc","tempsenshottestadc","tempsenslastadc","tempsensairin","tempsensairout","tempsenscore","tempsensdcdc"]
@@ -270,5 +331,37 @@ def main():
         dig.cmd.disarmacquisition()
         print("Disarming")
 
-if __name__ == "__main__":
-    main()
+def get_new_filename(base_name, timestamp_str):
+    return f"{base_name}_{timestamp_str}.lh5"
+
+def print_dig_stats(dig):
+    modelname = dig.par.modelname.value
+    fw_type = dig.par.fwtype.value
+    fw_ver = dig.par.fpga_fwver.value
+    adc_samplrate_msps = float(dig.par.adc_samplrate.value)  # in Msps
+    adc_n_bits = int(dig.par.adc_nbit.value)
+    sampling_period_ns = int(1e3 / adc_samplrate_msps)
+    inputrange = dig.par.inputrange.value
+    inputtype = dig.par.inputtype.value
+    print(f"\nDigitizer model: {modelname}, Firmware: {fw_type} v. {fw_ver}")
+    print(f"Sampling rate = {adc_samplrate_msps} MHz\n",
+          f"n. bit = {adc_n_bits}\n",
+          f"Sampling period = {sampling_period_ns} ns\n",
+          f"Input dynamic range = {inputrange} V\n",
+          f"Input type = {inputtype}\n")
+
+def daq_dpp():
+    """
+    Entry point for the console script 'daq-dpppha'.
+    """
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nAcquisition stopped manually by user.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    daq_dpp()

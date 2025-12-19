@@ -138,7 +138,7 @@ def start_acquisition():
         # IMPORTANT: When running daq_scope.py as part of an installed package,
         # you should invoke it as a module using `python -m`.
         # This ensures Python finds it correctly within the installed package.
-        command = ["python", "-m", "py_olaf_daq.daq_scope"] # Changed from "daq_scope.py"
+        command = ["python", "-m", "pycaendaq.daq-scope"] # Changed from "daq_scope.py"
         command.extend(["-a", dig_address])
         command.extend(["-c", config_file])
         command.extend(["-o", out_file])
@@ -185,8 +185,8 @@ def start_acquisition():
             return jsonify({'status': 'success', 'message': 'Acquisition started.'})
         except FileNotFoundError:
             # This error might occur if 'python' is not in PATH or if the module path is wrong.
-            app_logger.exception('Python executable or py_olaf_daq.daq_scope module not found.')
-            return jsonify({'status': 'error', 'message': 'Python executable or py_olaf_daq.daq_scope module not found.'}), 500
+            app_logger.exception('Python executable or pycaendaq.daq-scope module not found.')
+            return jsonify({'status': 'error', 'message': 'Python executable or pycaendaq.daq-scope module not found.'}), 500
         except Exception as e:
             app_logger.exception(f"Failed to start acquisition: {e}")
             return jsonify({'status': 'error', 'message': f"Failed to start acquisition: {e}"}), 500
@@ -303,7 +303,7 @@ def plot_waveforms():
     # If it's relative to the app's installed location, further path adjustments might be needed.
     if not os.path.isabs(resolved_lh5_file):
         # This assumes the user provides relative paths from the current working directory
-        # where the 'olaf-daq-web' command is executed.
+        # where the 'daq-web' command is executed.
         abs_lh5_file = os.path.abspath(resolved_lh5_file)
     else:
         abs_lh5_file = resolved_lh5_file
@@ -428,7 +428,7 @@ def run_app():
     """
     Entry point function to run the Flask web application.
     This function should be called when the package is installed and run
-    via the 'olaf-daq-web' console script.
+    via the 'daq-web' console script.
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
     app.template_folder = os.path.join(current_dir, 'templates')

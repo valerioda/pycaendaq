@@ -69,6 +69,7 @@ docs = [
 
 [project.scripts]
 daq-scope = "pycaendaq.daq_scope:main"
+daq-dpppha = "pycaendaq.daq_dpppha:daq_dpp"
 daq-web-app = "pycaendaq.app:run_app"
 
 [tool.setuptools]

@@ -1,0 +1,128 @@
+data_format:
+  CHANNEL:
+    name: CHANNEL
+    type: U8
+    dim: 0
+  TIMESTAMP:
+    name: TIMESTAMP
+    type: U64
+    dim: 0
+  ENERGY:
+    name: ENERGY
+    type: U16
+    dim: 0
+  ANALOG_PROBE_1:
+    name: ANALOG_PROBE_1
+    type: U16
+    dim: 1
+    shape: recordlength
+  ANALOG_PROBE_1_TYPE:
+    name: ANALOG_PROBE_1_TYPE
+    type: I32
+    dim: 0
+  WAVEFORM_SIZE:
+    name: WAVEFORM_SIZE
+    type: SIZE_T
+    dim: 0
+general_settings:
+  software_trigger_rate: 100 # Hz
+  max_file_size_mb: 100
+  buffer_size: 50
+  interval_stats: 2000
+  boardvetopolarity: ActiveHigh # (STRING) [['ActiveHigh', 'ActiveLow']] This parameter defines the polarity of the Veto
+  boardvetosource: Disabled # (STRING) [['Disabled', 'SIN', 'GPIO', 'LVDS', 'P0', 'EncodedClkIn']] This parameter defines the source of the Veto
+  boardvetowidth: 0 # (NUMBER) [[]] Veto width in nanoseconds. When 0, the monostable is disabled and the veto lasts as long as the selected source is active
+  busyinsource: SIN # (STRING) [['Disabled', 'SIN', 'GPIO', 'LVDS']] This parameter defines the source of the Busy Input.
+  clocksource:  # (STRING) [['Internal', 'FPClkIn']] Source of the system clock.
+  dacoutchselect: 0 # (NUMBER) [[]] When the DACoutMode is set to ChInput, the DAC reproduces the inputs signal received by a selected channel
+  dacoutmode: Static # (STRING) [['Static', 'Ramp', 'Sin5MHz', 'Square', 'IPE', 'ChInput', 'MemOccupancy', 'ChSum', 'OverThrSum']] Mode of the DAC output
+  dacoutstaticlevel: 8192 # (NUMBER) [[]] Level of DAC output when mode is set to static
+  enautodisarmacq: False # (STRING) [['True', 'False']] When enabled, the Auto Disarm option disarms the acquisition at the stop of run.
+  enclockoutfp:  # (STRING) [['True', 'False']] Enable clock output on Front Panel for the daisy chain propagation of the clock between multiple boards.
+  endatareduction: False # (STRING) [['True', 'False']] If enabled, events consisting of 2 words are compressed in a single word event.
+  enoffsetcalibration: True # (STRING) [['True', 'False']] The calibration can be disabled, mainly when a new calibration has to be calculated.
+  enstatevents: False # (STRING) [['True', 'False']] If enabled, stats events are generated. Decoded information can be retrieved from the stats endpoint.
+  errorflagdatamask:  # (STRING) [[]] All these errors can be combined into a Data Error Flag through a masked OR, programmed by this parameter.
+  errorflagmask:  # (STRING) [[]] All these errors can be combined into a Global Error Flag through a masked OR, programmed by this parameter.
+  globaltriggersource: TrgIn # (STRING) [['TrgIn', 'P0', 'TestPulse', 'UserTrg', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn', 'GPIO']] Defines the source for the Global Acquisition Trigger, which is the signal that opens the acquisition window. Can be used to trigger all channels together
+  gpiomode: SIN # (STRING) [['Disabled', 'TrgIn', 'SwTrg', 'Run', 'RefClk', 'TestPulse', 'Busy', 'UserGPO', 'Fixed0', 'Fixed1', 'P0', 'SIN', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn']] Select the signal that is routed to the GPIO, when this is used as output.
+  iolevel: NIM # (STRING) [['NIM', 'TTL']] Sets the electrical logic level of the LEMO I/Os.
+  itlagatewidth: 0 # (NUMBER) [[]] Gate generator at the output of the ITLs. The combinatorial logic of the self-trigger.
+  itlamainlogic: OR # (STRING) [['OR', 'AND', 'Majority']] Set the logic of ITLA to combine all the self-triggers of the board according to a specific trigger logic.
+  itlamajoritylev: 2 # (NUMBER) [[]] Defines the majority level of the Main Logic of the ITLA.
+  itlamask: 0 # (STRING) [[]] Enable Mask at the input of the ITLA.
+  itlapairlogic: NONE # (STRING) [['OR', 'AND', 'NONE']] Pairs of channels can be combined with an OR or AND before feeding the Main trigger Logic.
+  itlapolarity: Direct # (STRING) [['Direct', 'Inverted']] Polarity of ITLA.
+  itlbgatewidth: 0 # (NUMBER) [[]] Gate generator at the output of the ITLs. The combinatorial logic of the self-trigger.
+  itlbmainlogic: OR # (STRING) [['OR', 'AND', 'Majority']] Set the logic of ITLB to combine all the self-triggers of the board according to a specific trigger logic.
+  itlbmajoritylev: 2 # (NUMBER) [[]] Defines the majority level of the Main Logic of the ITLB.
+  itlbmask: 0 # (STRING) [[]] Enable Mask at the input of the ITLB.
+  itlbpairlogic: NONE # (STRING) [['OR', 'AND', 'NONE']] Pairs of channels can be combined with an OR or AND before feeding the Main trigger Logic.
+  itlbpolarity: Direct # (STRING) [['Direct', 'Inverted']] Polarity of ITLB.
+  lvdsioreg: 0 # (STRING) [[]] Set the status of the LVDS I/O for the quartets that are programmed to be output and Mode = IORegister.
+  lvdstrgmask:  # (STRING) [[]] Each LVDS line can be assigned to a combination of the 64 self-triggers, implemented as a masked OR, where the mask is set by this parameter.
+  permanentclockoutdelay:  # (NUMBER) [[]] Stores the clock output delay into the flash memory and makes it permanent.
+  rundelay: 0 # (NUMBER) [[]] Allow the start of the acquisition to be delayed with respect to the rising edge of the RUN signal.
+  startsource: SWcmd # (STRING) [['EncodedClkIn', 'SINlevel', 'SINedge', 'SWcmd', 'LVDS', 'P0']] Defines the source for the start of run.
+  syncoutmode: Disabled # (STRING) [['Disabled', 'SyncIn', 'TestPulse', 'IntClk', 'Run', 'User']] This parameter defines the SyncOut mode.
+  testpulsehighlevel: 0 # (NUMBER) [[]] High level of the test pulse.
+  testpulselowlevel: 0 # (NUMBER) [[]] Low level of the test pulse.
+  testpulseperiod: 0 # (NUMBER) [[]] Period of the Test Pulse, a programmable square wave that can be used as an internal periodic trigger or to generate a logic test pulse (TTL or NIM) on the TRGOUT and GPIO outputs.
+  testpulsewidth: 0 # (NUMBER) [[]] Width (i.e. the time the signal stays high = 1) of the test pulse in time.
+  trgoutmode: Disabled # (STRING) [['Disabled', 'TrgIn', 'Run', 'RefClk', 'TestPulse', 'Busy', 'UserTrgout', 'Fixed0', 'Fixed1', 'SyncIn', 'SIN', 'GPIO', 'P0', 'LBinClk', 'AcceptTrg', 'TrgClk', 'SwTrg', 'LVDS', 'ITLA', 'ITLB', 'ITLA_AND_ITLB', 'ITLA_OR_ITLB', 'EncodedClkIn']] Select the signal that is routed to the TRGOUT output.
+  volatileclockoutdelay:  # (NUMBER) [[]] Sets the delay of the clock output with respect to the input reference clock.
+channel_settings:
+  group1:
+    channels: "0..1"
+    chenable: True # (STRING) [['True', 'False']] Enable channel for the acquisition. When the channel is disabled, it doesn't give any data and its self-trigger is off.
+    chpretriggers: 2000 # (NUMBER) [From 4 to 4000, steps of 1] Number of samples coming before the position of the trigger in the waveform (i.e. size of the pre-trigger window).
+    chrecordlengths: 4000 # (NUMBER) [From 4 to 8100, steps of 4] Number of samples in the waveform (i.e. size of the acquisition window)
+    dcoffset: 10 # (NUMBER) [From 0.000 to 100.000, steps of 0.001] A constant DC offset (controlled by a 16 bit DAC) is added to the analog input in order to adjust the position of the signal baseline.
+    pulsepolarity: Positive # (STRING) [['Positive', 'Negative']] Polarity of the input signals
+    triggerthr: 50 # (NUMBER) [From 1 to 8191, steps of 1] Threshold value in counts. The value is relative to the Time filter signal
+    selftriggerwidth: 8 # (NUMBER) [From 0 to 8184, steps of 8] Width of the self-trigger. 0 means linear mode (same of 8 on DPP-PHA)
+    eventtriggersource: ChSelfTrigger # (STRING) [['Disabled', 'Ch64Trigger', 'ChSelfTrigger', 'SwTrg', 'TRGIN', 'GlobalTriggerSource', 'LVDS', 'ITLA', 'ITLB']] Defines the trigger source for the Time-Energy Events
+    wavetriggersource: ChSelfTrigger # (STRING) [['Disabled', 'Ch64Trigger', 'ITLA', 'ITLB', 'ChSelfTrigger', 'SwTrg', 'ADCOverSaturation', 'ADCUnderSaturation', 'ExternalInhibit', 'TRGIN', 'GlobalTriggerSource', 'LVDS']] Defines the trigger source for the Waveforms
+    itlconnect: Disabled # (STRING) [['Disabled', 'ITLA', 'ITLB']] Determine if the channel partecipate to ITLA or ITLB.
+    adcvetowidth: 0 # (NUMBER) [From 0 to 524280, steps of 8] ADC Veto width in nanoseconds. It allows to set a protection time after the ADC saturation. In case the ADC saturation generates an inhibit, the event is not saved; in case the ADC saturation does not generate an inhibit, the triggers generated during the veto width are flagged.
+    anticoincidencemask: Disabled # (STRING) [['Disabled', 'Ch64Trigger', 'TRGIN', 'GlobalTriggerSource', 'ITLA', 'ITLB']] AntiCoincidence Mask
+    channelstriggermask: 0 # (STRING) [[]] Defines the trigger source (or the coincidence source) for the Time-Energy Events
+    channelvetosource: Disabled # (STRING) [['Disabled', 'BoardVeto', 'ADCOverSaturation', 'ADCUnderSaturation']] This parameter defines the source of the Channel Veto
+    coincidencelengths: 0 # (NUMBER) [From 0 to 65535, steps of 1] Coincidence Window Length
+    coincidencelengtht: 0 # (NUMBER) [From 0 to 524280, steps of 8] Coincidence Window Length
+    coincidencemask: Disabled # (STRING) [['Disabled', 'Ch64Trigger', 'TRGIN', 'GlobalTriggerSource', 'ITLA', 'ITLB']] Coincidence Mask
+    energyfilterbaselineavg: Medium # (STRING) [['Fixed', 'VeryLow', 'Low', 'MediumLow', 'Medium', 'MediumHigh', 'High']] Number of samples used to average the baseline of the Energy Filter: Fixed = depends on another parameter; Very Low = 16 samples; Low = 64 samples; MediumLow = 256; Medium = 1k; MediumHigh = 4k; High = 16K
+    energyfilterbaselineguards: 0 # (NUMBER) [From 0 to 1000, steps of 1] Energy Filter Baseline Evaluation Guard after a peak in samples
+    energyfilterbaselineguardt: 0 # (NUMBER) [From 0 to 8000, steps of 8] Energy Filter Baseline Evaluation Guard after a peak in time
+    energyfilterfinegain: 1 # (NUMBER) [From 1.000 to 10.000, steps of 0.001] Digital Fine Gain of the Energy Filter
+    energyfilterflattops: 125 # (NUMBER) [From 4 to 375, steps of 1] Energy Filter Flat Top Time in samples
+    energyfilterflattopt: 1000 # (NUMBER) [From 32 to 3000, steps of 8] Energy Filter Flat Top Time in seconds
+    energyfilterlflimitation: Off # (STRING) [['On', 'Off']] Low Frequency Limitation for the Energy Filter
+    energyfilterpeakingavg: OneShot # (STRING) [['OneShot', 'LowAVG', 'MediumAVG', 'HighAVG']] Number of samples used to average the flat top: One shot = 1 sample; LowAVG = 4 samples, Medium AVG = 16 samples, HighAVG = 64 samples.
+    energyfilterpeakingposition: 50 # (NUMBER) [From 10 to 90, steps of 1] Peaking Position (%) on the Flat top of the Energy filter
+    energyfilterpileupguards: 120 # (NUMBER) [From 0 to 8000, steps of 8] Pile Up Guard Time in samples
+    energyfilterpileupguardt: 960 # (NUMBER) [From 0 to 64000, steps of 64] Pile Up Guard Time in seconds
+    energyfilterpolezeros: 6250 # (NUMBER) [From 4 to 65500, steps of 1] Decay Time of the Exponential Input Signal in samples
+    energyfilterpolezerot: 50000 # (NUMBER) [From 32 to 524000, steps of 8] Decay Time of the Exponential Input Signal in time
+    energyfilterrisetimes: 625 # (NUMBER) [From 4 to 1625, steps of 1] Energy Filter Rise Time in samples
+    energyfilterrisetimet: 5000 # (NUMBER) [From 32 to 13000, steps of 8] Energy Filter Rise Time in seconds
+    energyskimhighdiscriminator: 65535 # (NUMBER) [From 1 to 65535, steps of 1] High Energy value for energy skim
+    energyskimlowdiscriminator: 0 # (NUMBER) [From 0 to 65534, steps of 1] Low Energy value for energy skim
+    eventselector: All # (STRING) [['All', 'PileUp', 'EnergySkim']] Event to save selector criteria
+    gpifunction: None # (STRING) [['None', 'ResetTimestamp']] Channel action associated with GPI
+    signaloffset: 0 # (NUMBER) [From -1000000 to 1000000, steps of 50] Offset of the input signal.
+    sinfunction: None # (STRING) [['None', 'ResetTimestamp']] Channel action associated with SIN
+    timefilterretriggerguards: 0 # (NUMBER) [From 0 to 1000, steps of 1] Re-trigger guard in samples
+    timefilterretriggerguardt: 0 # (NUMBER) [From 0 to 8000, steps of 8] Re-trigger guard in time
+    timefilterrisetimes: 37 # (NUMBER) [From 4 to 250, steps of 1] Time Filter Rise Time is samples
+    timefilterrisetimet: 296 # (NUMBER) [From 32 to 2000, steps of 8] Time Filter Rise Time is ns
+    waveanalogprobe0: ADCInput # (STRING) [['ADCInput', 'TimeFilter', 'EnergyFilter', 'EnergyFilterBaseline', 'EnergyFilterMinusBaseline', 'ADCInput16']] Waveform Analog Probe n.0
+    waveanalogprobe1: TimeFilter # (STRING) [['ADCInput', 'TimeFilter', 'EnergyFilter', 'EnergyFilterBaseline', 'EnergyFilterMinusBaseline']] Waveform Analog Probe n.1
+    wavedatasource: ADC_DATA # (STRING) [['ADC_DATA', 'ADC_TEST_TOGGLE', 'ADC_TEST_RAMP', 'ADC_TEST_SIN', 'ADC_TEST_PRBS', 'Ramp', 'IPE', 'SquareWave']] For test purposes, it is possible to replace the ADC data with internal data generators.
+    wavedigitalprobe0: Trigger # (STRING) [['Trigger', 'TimeFilterArmed', 'PostSaturationEvent', 'EnergyFilterSaturation', 'AcquisitionInhibit', 'CoincidenceAnticoincidence', 'ReTriggerGuard', 'EnergyFilterBaselineFreeze', 'EnergyFilterPeaking', 'EnergyFilterPeakReady', 'EnergyFilterPileupGuard', 'EventPileUp', 'ADCSaturation', 'ADCSaturationProtection']] Waveform Digital Probe n.0
+    wavedigitalprobe1: TimeFilterArmed # (STRING) [['Trigger', 'TimeFilterArmed', 'PostSaturationEvent', 'EnergyFilterSaturation', 'AcquisitionInhibit', 'CoincidenceAnticoincidence', 'ReTriggerGuard', 'EnergyFilterBaselineFreeze', 'EnergyFilterPeaking', 'EnergyFilterPeakReady', 'EnergyFilterPileupGuard', 'EventPileUp', 'ADCSaturation', 'ADCSaturationProtection']] Waveform Digital Probe n.1
+    wavedigitalprobe2: EnergyFilterPeakReady # (STRING) [['Trigger', 'TimeFilterArmed', 'PostSaturationEvent', 'EnergyFilterSaturation', 'AcquisitionInhibit', 'CoincidenceAnticoincidence', 'ReTriggerGuard', 'EnergyFilterBaselineFreeze', 'EnergyFilterPeaking', 'EnergyFilterPeakReady', 'EnergyFilterPileupGuard', 'EventPileUp', 'ADCSaturation', 'ADCSaturationProtection']] Waveform Digital Probe n.2
+    wavedigitalprobe3: EventPileUp # (STRING) [['Trigger', 'TimeFilterArmed', 'PostSaturationEvent', 'EnergyFilterSaturation', 'AcquisitionInhibit', 'CoincidenceAnticoincidence', 'ReTriggerGuard', 'EnergyFilterBaselineFreeze', 'EnergyFilterPeaking', 'EnergyFilterPeakReady', 'EnergyFilterPileupGuard', 'EventPileUp', 'ADCSaturation', 'ADCSaturationProtection']] Waveform Digital Probe n.3
+    wavedownsamplingfactor: 1 # (STRING) [['1', '2', '4', '8']] Downsampling factor of the saved waveform
+    wavesaving: Always # (STRING) [['Always', 'OnRequest']] Defines the criteria to save Waveforms: Always or on request
+    waveselector: All # (STRING) [['All', 'PileUp', 'EnergySkim']] Wave to save selector criteria
