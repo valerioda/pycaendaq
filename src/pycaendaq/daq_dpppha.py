@@ -228,6 +228,8 @@ def main():
             event = {name: data[idx].value.copy() for name, idx in mapping.items()}
             ch = int(event["channel"])
             chrecordlengths = int(dig.get_value(f"/ch/{ch}/par/chrecordlengths"))
+            if dig.get_value(f"/ch/{ch}/par/waveanalogprobe0") == "ADCInput16":
+                chrecordlengths *= 2
             buffers[ch]["waveform"].append(event["analog_probe_1"][:chrecordlengths])
             buffers[ch]["time_filter"].append(event["analog_probe_2"][:chrecordlengths])
             buffers[ch]["digital_1"].append(event["digital_probe_1"][:chrecordlengths])
@@ -240,33 +242,19 @@ def main():
             buffers[ch]["flag_high"].append(event["flag_high"])
             buffers[ch]["count"] += 1
 
-            real_time = dig.get_value(f"/ch/{ch}/par/chrealtimemonitor")
-            dead_time = dig.get_value(f"/ch/{ch}/par/chdeadtimemonitor")
-            trigger_cnt = dig.get_value(f"/ch/{ch}/par/chtriggercnt")
-            wave_cnt = dig.get_value(f"/ch/{ch}/par/chwavecnt")
-            saved_event_cnt = dig.get_value(f"/ch/{ch}/par/chsavedeventcnt")
-            self_trg_rate = dig.get_value(f"/ch/{ch}/par/selftrgrate")
-            stats_dict = {
-                "real_time": real_time, 
-                "dead_time": dead_time,
-                "trigger_cnt": trigger_cnt,
-                "wave_cnt": wave_cnt,
-                "saved_event_cnt": saved_event_cnt,
-                "self_trg_rate": self_trg_rate,
-            }
-
             if save_temperature:
                 temp_values = [float(dig.get_value(f"/par/{name}")) for name in temp_names]
                 temperature_buffer.append(temp_values)
 
             buffer_counter += 1
             if (trigger_id % interval_stats) == 0:
-                print_stats(dig, start_time, trigger_id, stats_dict)
+                print_stats(dig, start_time, trigger_id, channel_list)
 
             if buffer_counter > buffer_size:
                 if save_enabled:
-                    buffers = flush_buffers_to_lh5(buffers, trigger_id, channel_list, current_file, sampling_period_ns)
-    
+                    buffers = flush_buffers_to_lh5(
+                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
+                    )
                     if os.path.exists(current_file) and os.path.getsize(current_file) >= max_file_size_bytes:
                         print(f"File {current_file} exceeded size. Rotating.")
                         timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
@@ -276,13 +264,19 @@ def main():
 
             if total_events and trigger_id >= total_events:
                 print("Reached target number of events. Stopping.")
-                print_stats(dig, start_time, trigger_id, stats_dict)
-                buffers = flush_buffers_to_lh5(buffers, trigger_id, channel_list, current_file, sampling_period_ns)
+                print_stats(dig, start_time, trigger_id, channel_list)
+                if save_enabled:
+                    buffers = flush_buffers_to_lh5(
+                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
+                    )
                 break
             if max_duration and (time.time() - start_time) >= max_duration:
                 print("Reached max acquisition time. Stopping.")
-                print_stats(dig, start_time, trigger_id, stats_dict)
-                buffers = flush_buffers_to_lh5(buffers, trigger_id, channel_list, current_file, sampling_period_ns)
+                print_stats(dig, start_time, trigger_id, channel_list)
+                if save_enabled:
+                    buffers = flush_buffers_to_lh5(
+                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
+                    )
                 break
 
         dig.cmd.disarmacquisition()
@@ -310,7 +304,7 @@ def print_dig_stats(dig):
           f"Input type = {inputtype}\n")
 
 
-def print_stats(dig, start_time, counter, stats_dict):
+def print_stats(dig, start_time, counter, channel_list):
     elapsed = time.time() - start_time
     rate = counter / elapsed / (1024. * 1024.) # MB/s
     print(f"Elapsed time {elapsed:.1f} s, n. events: {counter}, readout rate {rate:.1e} MB/s")
@@ -320,11 +314,27 @@ def print_stats(dig, start_time, counter, stats_dict):
     for key, value in status.items():
         print(f"  {key:17}: {'ON' if value else 'OFF'}")
 
-    for par, val in stats_dict.items():
-        if "time" in par:
-            val = int(val) // 524288
-        print(f"{par}: {val} ", end='')
-    print()
+    for ch in channel_list:
+        real_time = dig.get_value(f"/ch/{ch}/par/chrealtimemonitor")
+        dead_time = dig.get_value(f"/ch/{ch}/par/chdeadtimemonitor")
+        trigger_cnt = dig.get_value(f"/ch/{ch}/par/chtriggercnt")
+        wave_cnt = dig.get_value(f"/ch/{ch}/par/chwavecnt")
+        saved_event_cnt = dig.get_value(f"/ch/{ch}/par/chsavedeventcnt")
+        self_trg_rate = dig.get_value(f"/ch/{ch}/par/selftrgrate")
+        stats_dict = {
+            "real_time": real_time, 
+            "dead_time": dead_time,
+            "trigger_cnt": trigger_cnt,
+            "wave_cnt": wave_cnt,
+            "saved_event_cnt": saved_event_cnt,
+            "self_trg_rate": self_trg_rate,
+        }
+        print(f"[STATS] ch{ch:03}: ", end="")
+        for par, val in stats_dict.items():
+            if "time" in par:
+                val = int(val) // 524288
+            print(f"{par}: {val} ", end="")
+        print()
 
 
 def decode_status(status):

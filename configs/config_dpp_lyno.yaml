@@ -25,11 +25,11 @@ channel_settings:
   group1:
     channels: "0..1"
     chenable: True
-    chpretriggers: 2000
-    chrecordlengths: 4000
+    chpretriggers: 4000 # [From 4 to 4000, steps of 1]
+    chrecordlengths: 8000 # [From 4 to 8100, steps of 4]
     dcoffset: 10
     pulsepolarity: Positive
-    triggerthr: 50
+    triggerthr: 10
     selftriggerwidth: 8
     timefilterretriggerguards: 500
     eventtriggersource: ChSelfTrigger|GlobalTriggerSource # (STRING) [['Disabled', 'Ch64Trigger', 'ChSelfTrigger', 'SwTrg', 'TRGIN', 'GlobalTriggerSource', 'LVDS', 'ITLA', 'ITLB']] Defines the trigger source for the Time-Energy Events
@@ -55,8 +55,8 @@ channel_settings:
     energyskimlowdiscriminator: 0 # (NUMBER) [From 0 to 65534, steps of 1] Low Energy value for energy skim
     eventselector: All
     signaloffset: 0
-    timefilterrisetimes: 100
-    waveanalogprobe0: ADCInput # (STRING) [['ADCInput', 'TimeFilter', 'EnergyFilter', 'EnergyFilterBaseline', 'EnergyFilterMinusBaseline', 'ADCInput16']] Waveform Analog Probe n.0
+    timefilterrisetimes: 40
+    waveanalogprobe0: ADCInput16 # (STRING) [['ADCInput', 'TimeFilter', 'EnergyFilter', 'EnergyFilterBaseline', 'EnergyFilterMinusBaseline', 'ADCInput16']] Waveform Analog Probe n.0
     waveanalogprobe1: TimeFilter
     wavedatasource: ADC_DATA
     wavedigitalprobe0: Trigger # (STRING) [['Trigger', 'TimeFilterArmed', 'PostSaturationEvent', 'EnergyFilterSaturation', 'AcquisitionInhibit', 'CoincidenceAnticoincidence', 'ReTriggerGuard', 'EnergyFilterBaselineFreeze', 'EnergyFilterPeaking', 'EnergyFilterPeakReady', 'EnergyFilterPileupGuard', 'EventPileUp', 'ADCSaturation', 'ADCSaturationProtection']] Waveform Digital Probe n.0
