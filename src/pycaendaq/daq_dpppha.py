@@ -198,6 +198,11 @@ def main():
         temperature_buffer = []
         buffers = {ch: {
             "waveform": [],
+            "time_filter": [],
+            "digital_1": [],
+            "digital_2": [],
+            "digital_3": [],
+            "digital_4": [],
             "timestamp": [],
             "energy": [],
             "flag_low": [],
@@ -224,6 +229,11 @@ def main():
             ch = int(event["channel"])
             chrecordlengths = int(dig.get_value(f"/ch/{ch}/par/chrecordlengths"))
             buffers[ch]["waveform"].append(event["analog_probe_1"][:chrecordlengths])
+            buffers[ch]["time_filter"].append(event["analog_probe_2"][:chrecordlengths])
+            buffers[ch]["digital_1"].append(event["digital_probe_1"][:chrecordlengths])
+            buffers[ch]["digital_2"].append(event["digital_probe_2"][:chrecordlengths])
+            buffers[ch]["digital_3"].append(event["digital_probe_3"][:chrecordlengths])
+            buffers[ch]["digital_4"].append(event["digital_probe_4"][:chrecordlengths])
             buffers[ch]["timestamp"].append(np.uint64(start_timestamp + event["timestamp_ns"]))
             buffers[ch]["energy"].append(event["energy"])
             buffers[ch]["flag_low"].append(event["flag_low"])
@@ -359,18 +369,21 @@ def flush_buffers_to_lh5(
         if ch_size == 0:
             continue
 
-        values = ArrayOfEqualSizedArrays(
-            nda=np.array(ch_data["waveform"]),
-            attrs={"datatype": "array_of_equalsized_arrays<1,1>{real}", "units": "ADC"},
-        )
-        
-        wf = WaveformTable(
-            size=ch_size,
-            t0=Array([0] * ch_size, attrs={"datatype": "array<1>{real}"}),
-            dt=Array([sampling_period_ns] * ch_size, attrs={"datatype": "array<1>{real}", "units": "ns"}),
-            values=values,
-            values_units="ADC"
-        )
+        def make_waveform_table(data_key, units="ADC"):
+            values = ArrayOfEqualSizedArrays(
+                nda=np.array(ch_data[data_key]),
+                attrs={
+                    "datatype": "array_of_equalsized_arrays<1,1>{real}", 
+                    "units": units
+                },
+            )
+            return WaveformTable(
+                size=ch_size,
+                t0=Array([0] * ch_size, attrs={"datatype": "array<1>{real}"}),
+                dt=Array([sampling_period_ns] * ch_size, attrs={"datatype": "array<1>{real}", "units": "ns"}),
+                values=values,
+                values_units=units
+            )
 
         def make_lh5_arr(data_key, units=None):
             attrs = {"datatype": "array<1>{real}"}
@@ -384,13 +397,18 @@ def flush_buffers_to_lh5(
                 "energy":      make_lh5_arr("energy"),
                 "flag_low":    make_lh5_arr("flag_low"),
                 "flag_high":   make_lh5_arr("flag_high"),
-                "waveform":    wf
+                "waveform":    make_waveform_table("waveform"),
+                "time_filter": make_waveform_table("time_filter"),
+                "digital_1":   make_waveform_table("digital_1"),
+                "digital_2":   make_waveform_table("digital_2"),
+                "digital_3":   make_waveform_table("digital_3"),
+                "digital_4":   make_waveform_table("digital_4")
             }
         )
         lh5.write(raw_data, name="raw", lh5_file=current_file, wo_mode="append", group=f"ch{ch:03}")
-        for key in ["waveform", "timestamp", "energy", "flag_low", "flag_high"]:
-            if key in buffers[ch]: buffers[ch][key].clear()
-        #buffers[ch]["count"] = 0
+        for key in buffers[ch]:
+            if key in ["count"]: continue
+            else: buffers[ch][key].clear()
 
     if save_temperature and temperature_buffer and temp_names:
         temp_np = np.array(temperature_buffer)

@@ -23,13 +23,13 @@ general_settings:
   enstatevents: True
 channel_settings:
   group1:
-    channels: "0"
+    channels: "0..1"
     chenable: True
     chpretriggers: 2000
     chrecordlengths: 4000
     dcoffset: 10
     pulsepolarity: Positive
-    triggerthr: 10
+    triggerthr: 50
     selftriggerwidth: 8
     timefilterretriggerguards: 500
     eventtriggersource: ChSelfTrigger|GlobalTriggerSource # (STRING) [['Disabled', 'Ch64Trigger', 'ChSelfTrigger', 'SwTrg', 'TRGIN', 'GlobalTriggerSource', 'LVDS', 'ITLA', 'ITLB']] Defines the trigger source for the Time-Energy Events
@@ -55,50 +55,11 @@ channel_settings:
     energyskimlowdiscriminator: 0 # (NUMBER) [From 0 to 65534, steps of 1] Low Energy value for energy skim
     eventselector: All
     signaloffset: 0
-    timefilterrisetimes: 40
+    timefilterrisetimes: 100
     waveanalogprobe0: ADCInput # (STRING) [['ADCInput', 'TimeFilter', 'EnergyFilter', 'EnergyFilterBaseline', 'EnergyFilterMinusBaseline', 'ADCInput16']] Waveform Analog Probe n.0
     waveanalogprobe1: TimeFilter
     wavedatasource: ADC_DATA
     wavedigitalprobe0: Trigger # (STRING) [['Trigger', 'TimeFilterArmed', 'PostSaturationEvent', 'EnergyFilterSaturation', 'AcquisitionInhibit', 'CoincidenceAnticoincidence', 'ReTriggerGuard', 'EnergyFilterBaselineFreeze', 'EnergyFilterPeaking', 'EnergyFilterPeakReady', 'EnergyFilterPileupGuard', 'EventPileUp', 'ADCSaturation', 'ADCSaturationProtection']] Waveform Digital Probe n.0
-    wavedigitalprobe1: TimeFilterArmed
-    wavedigitalprobe2: EnergyFilterPeakReady
-    wavedigitalprobe3: EventPileUp
-    wavedownsamplingfactor: 1
-    wavesaving: Always
-    waveselector: All
-  group2:
-    channels: "1"
-    chenable: True
-    chpretriggers: 1500
-    chrecordlengths: 3000
-    dcoffset: 10
-    pulsepolarity: Positive
-    triggerthr: 10
-    selftriggerwidth: 8
-    timefilterretriggerguards: 1000
-    eventtriggersource: ChSelfTrigger|GlobalTriggerSource
-    wavetriggersource: ChSelfTrigger|GlobalTriggerSource
-    itlconnect: ITLA
-    adcvetowidth: 0
-    energyfilterbaselineavg: Medium 
-    energyfilterbaselineguards: 0
-    energyfilterfinegain: 1
-    energyfilterflattops: 125
-    energyfilterlflimitation: "Off"
-    energyfilterpeakingavg: OneShot
-    energyfilterpeakingposition: 50
-    energyfilterpileupguards: 120
-    energyfilterpolezeros: 6250
-    energyfilterrisetimes: 625
-    energyskimhighdiscriminator: 65535
-    energyskimlowdiscriminator: 0
-    eventselector: All
-    signaloffset: 0
-    timefilterrisetimes: 40
-    waveanalogprobe0: ADCInput
-    waveanalogprobe1: TimeFilter
-    wavedatasource: ADC_DATA
-    wavedigitalprobe0: Trigger
     wavedigitalprobe1: TimeFilterArmed
     wavedigitalprobe2: EnergyFilterPeakReady
     wavedigitalprobe3: EventPileUp
