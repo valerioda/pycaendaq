@@ -1,0 +1,107 @@
+general_settings:
+  max_file_size_mb: 100
+  buffer_size: 50
+  interval_stats: 500
+  globaltriggersource: TestPulse # (STRING) [['TrgIn','P0','TestPulse','UserTrg','SwTrg','LVDS','ITLA','ITLB','ITLA_AND_ITLB','ITLA_OR_ITLB','EncodedClkIn','GPIO']]
+  iolevel: TTL
+  startsource: SWcmd
+  itlagatewidth: 0
+  itlamainlogic: AND
+  itlamajoritylev: 1
+  itlamask: "0x3"
+  itlapairlogic: NONE
+  itlapolarity: Direct
+  testpulsehighlevel: 1000
+  testpulselowlevel: 0
+  testpulseperiod: 1000000
+  testpulsewidth: 100
+  boardvetopolarity: ActiveHigh
+  boardvetosource: Disabled
+  boardvetowidth: 0
+  busyinsource: SIN
+  clocksource: Internal
+  enstatevents: True
+channel_settings:
+  group1:
+    channels: "0"
+    chenable: True
+    chpretriggers: 2000
+    chrecordlengths: 4000
+    dcoffset: 10
+    pulsepolarity: Positive
+    triggerthr: 10
+    selftriggerwidth: 8
+    timefilterretriggerguards: 500
+    eventtriggersource: ChSelfTrigger|GlobalTriggerSource # (STRING) [['Disabled', 'Ch64Trigger', 'ChSelfTrigger', 'SwTrg', 'TRGIN', 'GlobalTriggerSource', 'LVDS', 'ITLA', 'ITLB']] Defines the trigger source for the Time-Energy Events
+    wavetriggersource: ChSelfTrigger|GlobalTriggerSource # (STRING) [['Disabled', 'Ch64Trigger', 'ITLA', 'ITLB', 'ChSelfTrigger', 'SwTrg', 'ADCOverSaturation', 'ADCUnderSaturation', 'ExternalInhibit', 'TRGIN', 'GlobalTriggerSource', 'LVDS']] Defines the trigger source for the Waveforms
+    itlconnect: ITLA
+    adcvetowidth: 0
+    anticoincidencemask: Disabled
+    channelstriggermask: 0 # (STRING) [[]] Defines the trigger source (or the coincidence source) for the Time-Energy Events
+    channelvetosource: Disabled
+    coincidencelengths: 0
+    coincidencemask: Disabled
+    energyfilterbaselineavg: Medium # (STRING) [['Fixed', 'VeryLow', 'Low', 'MediumLow', 'Medium', 'MediumHigh', 'High']] Number of samples used to average the baseline of the Energy Filter: Fixed = depends on another parameter; Very Low = 16 samples; Low = 64 samples; MediumLow = 256; Medium = 1k; MediumHigh = 4k; High = 16K
+    energyfilterbaselineguards: 0 # (NUMBER) [From 0 to 1000, steps of 1] Energy Filter Baseline Evaluation Guard after a peak in samples
+    energyfilterfinegain: 1 # (NUMBER) [From 1.000 to 10.000, steps of 0.001] Digital Fine Gain of the Energy Filter
+    energyfilterflattops: 125 # (NUMBER) [From 4 to 375, steps of 1] Energy Filter Flat Top Time in samples
+    energyfilterlflimitation: "Off" # (STRING) [['On', 'Off']] Low Frequency Limitation for the Energy Filter
+    energyfilterpeakingavg: OneShot # (STRING) [['OneShot', 'LowAVG', 'MediumAVG', 'HighAVG']] Number of samples used to average the flat top: One shot = 1 sample; LowAVG = 4 samples, Medium AVG = 16 samples, HighAVG = 64 samples.
+    energyfilterpeakingposition: 50 # (NUMBER) [From 10 to 90, steps of 1] Peaking Position (%) on the Flat top of the Energy filter
+    energyfilterpileupguards: 120 # (NUMBER) [From 0 to 8000, steps of 8] Pile Up Guard Time in samples
+    energyfilterpolezeros: 6250 # (NUMBER) [From 4 to 65500, steps of 1] Decay Time of the Exponential Decay
+    energyfilterrisetimes: 625 # (NUMBER) [From 4 to 1625, steps of 1] Energy Filter Rise Time in samples
+    energyskimhighdiscriminator: 65535 # (NUMBER) [From 1 to 65535, steps of 1] High Energy for energy skim
+    energyskimlowdiscriminator: 0 # (NUMBER) [From 0 to 65534, steps of 1] Low Energy value for energy skim
+    eventselector: All
+    signaloffset: 0
+    timefilterrisetimes: 40
+    waveanalogprobe0: ADCInput # (STRING) [['ADCInput', 'TimeFilter', 'EnergyFilter', 'EnergyFilterBaseline', 'EnergyFilterMinusBaseline', 'ADCInput16']] Waveform Analog Probe n.0
+    waveanalogprobe1: TimeFilter
+    wavedatasource: ADC_DATA
+    wavedigitalprobe0: Trigger # (STRING) [['Trigger', 'TimeFilterArmed', 'PostSaturationEvent', 'EnergyFilterSaturation', 'AcquisitionInhibit', 'CoincidenceAnticoincidence', 'ReTriggerGuard', 'EnergyFilterBaselineFreeze', 'EnergyFilterPeaking', 'EnergyFilterPeakReady', 'EnergyFilterPileupGuard', 'EventPileUp', 'ADCSaturation', 'ADCSaturationProtection']] Waveform Digital Probe n.0
+    wavedigitalprobe1: TimeFilterArmed
+    wavedigitalprobe2: EnergyFilterPeakReady
+    wavedigitalprobe3: EventPileUp
+    wavedownsamplingfactor: 1
+    wavesaving: Always
+    waveselector: All
+  group2:
+    channels: "1"
+    chenable: True
+    chpretriggers: 1500
+    chrecordlengths: 3000
+    dcoffset: 10
+    pulsepolarity: Positive
+    triggerthr: 10
+    selftriggerwidth: 8
+    timefilterretriggerguards: 1000
+    eventtriggersource: ChSelfTrigger|GlobalTriggerSource
+    wavetriggersource: ChSelfTrigger|GlobalTriggerSource
+    itlconnect: ITLA
+    adcvetowidth: 0
+    energyfilterbaselineavg: Medium 
+    energyfilterbaselineguards: 0
+    energyfilterfinegain: 1
+    energyfilterflattops: 125
+    energyfilterlflimitation: "Off"
+    energyfilterpeakingavg: OneShot
+    energyfilterpeakingposition: 50
+    energyfilterpileupguards: 120
+    energyfilterpolezeros: 6250
+    energyfilterrisetimes: 625
+    energyskimhighdiscriminator: 65535
+    energyskimlowdiscriminator: 0
+    eventselector: All
+    signaloffset: 0
+    timefilterrisetimes: 40
+    waveanalogprobe0: ADCInput
+    waveanalogprobe1: TimeFilter
+    wavedatasource: ADC_DATA
+    wavedigitalprobe0: Trigger
+    wavedigitalprobe1: TimeFilterArmed
+    wavedigitalprobe2: EnergyFilterPeakReady
+    wavedigitalprobe3: EventPileUp
+    wavedownsamplingfactor: 1
+    wavesaving: Always
+    waveselector: All
