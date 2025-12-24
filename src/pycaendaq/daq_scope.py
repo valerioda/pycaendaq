@@ -116,13 +116,6 @@ def main():
 
     recordlengths = int(gen_settings["recordlengths"])
     acqtriggersource = gen_settings["acqtriggersource"]
-    tot_channels = int(dig.par.numch.value)
-    sampling_period_ns = int(1e3 / float(dig.par.adc_samplrate.value))
-    data_format = [
-        {"name": "TIMESTAMP_NS", "type": "U64"},
-        {"name": "TRIGGER_ID", "type": "U32"},
-        {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [tot_channels, recordlengths]},
-    ]
 
     buffer_counter = 0
     start_time = time.time()
@@ -157,6 +150,13 @@ def main():
                 print(f"  /ch/{chns}: Setting {param_name} to {param_value}")
                 dig.set_value(f"/ch/{chns}/par/{param_name}",str(param_value))
 
+        tot_channels = int(dig.par.numch.value)
+        sampling_period_ns = int(1e3 / float(dig.par.adc_samplrate.value))
+        data_format = [
+            {"name": "TIMESTAMP_NS", "type": "U64"},
+            {"name": "TRIGGER_ID", "type": "U32"},
+            {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [tot_channels, recordlengths]},
+        ]
         endpoint = dig.endpoint["scope"]
         data = endpoint.set_read_data_format(data_format)
         dig.endpoint.par.activeendpoint.value = "scope"
@@ -285,15 +285,14 @@ def print_dig_stats(dig):
 def print_stats(dig, start_time, counter):
     elapsed = time.time() - start_time
     rate = counter / elapsed / (1024. * 1024.) # MB/s
+    print(f"Elapsed time {elapsed:.1f} s, n. events: {counter}, readout rate {rate:.1e} MB/s")
 
     status = decode_status(dig.get_value("/par/acquisitionstatus"))
     print(f"Acquisition Status:")
     for key, value in status.items():
         print(f"  {key:17}: {'ON' if value else 'OFF'}")
 
-    par_stats = ["livetimemonitor","realtimemonitor","deadtimemonitor",
-                 "triggercnt","losttriggercnt"]
-    print(f"Elapsed time {elapsed:.1f} s, n. events: {counter}, readout rate {rate:.1e} MB/s")
+    par_stats = ["livetimemonitor","realtimemonitor","deadtimemonitor","triggercnt","losttriggercnt"]
     for par in par_stats:
         val = dig.get_value(f'/par/{par}')
         if par in ["livetimemonitor", "realtimemonitor", "deadtimemonitor"]:

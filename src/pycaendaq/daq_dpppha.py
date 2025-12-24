@@ -47,7 +47,6 @@ def main():
         print("Please check your YAML file for syntax errors.")
         sys.exit(1)
 
-    data_format_dict = config.get("data_format", {})
     gen_settings = config.get("general_settings", {})
     channel_settings = config.get("channel_settings", {})
     all_active_channels = set()
@@ -97,7 +96,6 @@ def main():
     max_file_size_bytes = max_file_size_mb * 1024 * 1024
     buffer_size = gen_settings.get("buffer_size", 100)
     interval_stats = gen_settings.get("interval_stats", 100)
-    software_rate = gen_settings.get("software_trigger_rate", 1000)
 
     save_temperature = args["temperature"]
     total_events = args.get("n_events")
@@ -115,55 +113,10 @@ def main():
         timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
         current_file = get_new_filename(base_name, timestamp_str)
 
+    globaltriggersource = gen_settings["globaltriggersource"]
     buffer_counter = 0
     start_time = time.time()
     start_timestamp = time.time_ns()
-
-    recordlengths = 1000
-    data_format = [
-        {
-            'name': 'CHANNEL',
-            'type': 'U8',
-            'dim' : 0
-        },
-        {
-            'name': 'TIMESTAMP',
-            'type': 'U64',
-            'dim': 0,
-        },
-        {
-            'name': 'ENERGY',
-            'type': 'U16',
-            'dim': 0,
-        },
-        {
-            'name': 'ANALOG_PROBE_1',
-            'type': 'U16',
-            'dim': 1,
-            'shape': [recordlengths]
-        },
-        {
-            'name': 'ANALOG_PROBE_1_TYPE',
-            'type': 'I32',
-            'dim': 0
-        },
-        {
-            'name': 'DIGITAL_PROBE_1',
-            'type': 'U8',
-            'dim': 1,
-            'shape': [recordlengths]
-        },
-        {
-            'name': 'DIGITAL_PROBE_1_TYPE',
-            'type': 'I32',
-            'dim': 0
-        },
-        {
-            'name': 'WAVEFORM_SIZE',
-            'type': 'SIZE_T',
-            'dim': 0
-        }
-    ]
 
     with device.connect(dig_address) as dig:
         dig.cmd.Reset()
@@ -172,8 +125,7 @@ def main():
 
         print(f"--- Applying general digitizer settings ---")
         for param_name, param_value in gen_settings.items():
-            if param_name in ["software_trigger_rate","max_file_size_mb",
-                              "buffer_size","interval_stats"]:
+            if param_name in ["max_file_size_mb","buffer_size","interval_stats"]:
                 continue
             if param_value is None:
                 continue
@@ -195,144 +147,145 @@ def main():
                 dig.set_value(f"/ch/{chns}/par/{param_name}",str(param_value))
 
         tot_channels = int(dig.par.numch.value)
+        maxrawdatasize = int(dig.par.maxrawdatasize.value)
         sampling_period_ns = int(1e3 / float(dig.par.adc_samplrate.value))
+
         data_format = [
-            {"name": "TIMESTAMP_NS", "type": "U64"},
-            {"name": "TRIGGER_ID", "type": "U32"},
-            {"name": "WAVEFORM", "type": "U16", "dim": 2, "shape": [tot_channels, recordlengths]},
+            {"name": "CHANNEL", "type": device.DataType.U8, "dim": 0},
+            {"name": "TIMESTAMP", "type": device.DataType.U64, "dim": 0},
+            {"name": "TIMESTAMP_NS", "type": device.DataType.DOUBLE, "dim": 0},
+            {"name": "FINE_TIMESTAMP", "type": device.DataType.U16, "dim": 0},
+            {"name": "ENERGY", "type": device.DataType.U16, "dim": 0},
+            {"name": "FLAGS_LOW_PRIORITY", "type": device.DataType.U16, "dim": 0},
+            {"name": "FLAGS_HIGH_PRIORITY", "type": device.DataType.U16, "dim": 0},
+            {"name": "TRIGGER_THR", "type": device.DataType.U16, "dim": 0},
+            {"name": "TIME_RESOLUTION", "type": device.DataType.U8, "dim": 0},
+            {"name": "ANALOG_PROBE_1", "type": device.DataType.I32, "dim": 1, "shape": [maxrawdatasize]},
+            {'name': "ANALOG_PROBE_1_TYPE", "type": device.DataType.U8, "dim": 0},
+            {"name": "ANALOG_PROBE_2", "type": device.DataType.I32, "dim": 1, "shape": [maxrawdatasize]},
+            {'name': "ANALOG_PROBE_2_TYPE", "type": device.DataType.U8, "dim": 0},
+            {"name": "DIGITAL_PROBE_1", "type": device.DataType.U8, "dim": 1, "shape": [maxrawdatasize]},
+            {'name': "DIGITAL_PROBE_1_TYPE", "type": device.DataType.U8, "dim": 0},
+            {"name": "DIGITAL_PROBE_2", "type": device.DataType.U8, "dim": 1, "shape": [maxrawdatasize]},
+            {'name': "DIGITAL_PROBE_2_TYPE", "type": device.DataType.U8, "dim": 0},
+            {"name": "DIGITAL_PROBE_3", "type": device.DataType.U8, "dim": 1, "shape": [maxrawdatasize]},
+            {'name': "DIGITAL_PROBE_3_TYPE", "type": device.DataType.U8, "dim": 0},
+            {"name": "DIGITAL_PROBE_4", "type": device.DataType.U8, "dim": 1, "shape": [maxrawdatasize]},
+            {'name': "DIGITAL_PROBE_4_TYPE", "type": device.DataType.U8, "dim": 0},
         ]
+        keys = [
+            "channel", "timestamp", "timestamp_ns", "fine_timestamp", "energy",
+            "flag_low", "flag_high", "trigger_thr", "time_res"
+        ]
+        mapping = {name: i for i, name in enumerate(keys)}
+        mapping.update({
+            "analog_probe_1": 9,
+            "analog_probe_2": 11,
+            "digital_probe_1": 13,
+            "digital_probe_2": 15,
+            "digital_probe_3": 17,
+            "digital_probe_4": 19,
+        })
         
         decoded_endpoint_path = "dpppha"
         endpoint = dig.endpoint[decoded_endpoint_path]
         data = endpoint.set_read_data_format(data_format)
         dig.endpoint.par.activeendpoint.value = decoded_endpoint_path
 
-        channel = data[0].value
-        timestamp = data[1].value
-        energy = data[2].value
-        analog_probe_1 = data[3].value
-        analog_probe_1_type = data[4].value  # Integer value described in Supported Endpoints > Probe type meaning
-        digital_probe_1 = data[5].value
-        digital_probe_1_type = data[6].value  # Integer value described in Supported Endpoints > Probe type meaning
-        waveform_size = data[7].value
-
-        print("Arming")
         dig.cmd.armacquisition()
-        print("Start acquisition")
         dig.cmd.swstartacquisition()
 
-        n_last = nev % n_split
-        n_iter = int(nev/n_split)
-        print("Total iterations",n_iter,"last iteration",n_last)
+        temperature_buffer = []
+        buffers = {ch: {
+            "waveform": [],
+            "time_filter": [],
+            "digital_1": [],
+            "digital_2": [],
+            "digital_3": [],
+            "digital_4": [],
+            "timestamp": [],
+            "energy": [],
+            "flag_low": [],
+            "flag_high": [],
+            "count": 0
+        } for ch in channel_list}
 
-        for n in range(n_iter + 1):
-            print("Starting iteration",n)
-            if n == n_iter:
-                n_current = n_last
-            else:
-                n_current = n_split
-            if n_current == 0: continue
+        print("\nStarting acquisition...")
+        trigger_id = 0
+        while True:
+            if "SwTrg" in globaltriggersource:
+                dig.cmd.sendswtrigger()
 
-            timestamps = np.zeros((active_ch,n_current),dtype=np.uint64)
-            wfs = np.zeros((active_ch,n_current,recordlengths),dtype=np.uint16)
+            try:
+                endpoint.read_data(-1, data)
+            except error.Error as ex:
+                if ex.code is error.ErrorCode.TIMEOUT:
+                    continue
+                if ex.code is error.ErrorCode.STOP:
+                    break
+                raise ex
+
+            event = {name: data[idx].value.copy() for name, idx in mapping.items()}
+            ch = int(event["channel"])
+            chrecordlengths = int(dig.get_value(f"/ch/{ch}/par/chrecordlengths"))
+            if dig.get_value(f"/ch/{ch}/par/waveanalogprobe0") == "ADCInput16":
+                chrecordlengths *= 2
+            buffers[ch]["waveform"].append(event["analog_probe_1"][:chrecordlengths])
+            buffers[ch]["time_filter"].append(event["analog_probe_2"][:chrecordlengths])
+            buffers[ch]["digital_1"].append(event["digital_probe_1"][:chrecordlengths])
+            buffers[ch]["digital_2"].append(event["digital_probe_2"][:chrecordlengths])
+            buffers[ch]["digital_3"].append(event["digital_probe_3"][:chrecordlengths])
+            buffers[ch]["digital_4"].append(event["digital_probe_4"][:chrecordlengths])
+            buffers[ch]["timestamp"].append(np.uint64(start_timestamp + event["timestamp_ns"]))
+            buffers[ch]["energy"].append(event["energy"])
+            buffers[ch]["flag_low"].append(event["flag_low"])
+            buffers[ch]["flag_high"].append(event["flag_high"])
+            buffers[ch]["count"] += 1
 
             if save_temperature:
-                temp_names = ["tempsensfirstadc","tempsenshottestadc","tempsenslastadc","tempsensairin","tempsensairout","tempsenscore","tempsensdcdc"]
-                temperatures = np.zeros((n_current,len(temp_names)),dtype=float)
+                temp_values = [float(dig.get_value(f"/par/{name}")) for name in temp_names]
+                temperature_buffer.append(temp_values)
 
-            t_start = time.time()
-            for i in range(n_current*active_ch):
-                acq_time = time.time() - t_start
-                if (i//active_ch % 1000 == 0 ):
-                    print(f"Acquisition of event n. {i}, elapsed time {acq_time:.2f} s")
-                try:
-                    endpoint.read_data(-1, data)
-                    wfs[channel,i//active_ch] = analog_probe_1
-                    timestamps[channel,i//active_ch] = timestamp
-                    if save_temperature:
-                        for j, temp in enumerate(temp_names):
-                            temp_value = float(dig.get_value(f"/par/{temp}"))
-                            temperatures[i//active_ch][j] = temp_value
-                except error.Error as ex:
-                    if ex.code == error.ErrorCode.TIMEOUT:
-                        continue
-                    if ex.code == error.ErrorCode.STOP:
-                        break
-                    else:
-                        raise ex
-            
-            dt = Array(
-                sampling_period_ns * np.ones(n_current, dtype=np.uint16),
-                attrs={'datatype': 'array<1>{real}', 'units': 'ns'}
-            )
-            t0 = Array(
-                sampling_period_ns * np.ones(n_current, dtype=np.uint16),
-                attrs={'datatype': 'array<1>{real}', 'units': 'ns'},
-            )
+            buffer_counter += 1
+            if (trigger_id % interval_stats) == 0:
+                print_stats(dig, start_time, trigger_id, channel_list)
 
-            for ch in range(active_ch):
-                values = ArrayOfEqualSizedArrays(
-                    nda=wfs[ch],
-                    attrs={'datatype': 'array_of_equalsized_arrays<1,1>{real}', 'units': 'ADC'},
-                )
-                waveform = WaveformTable(
-                    size = n_current,
-                    t0 = t0,
-                    t0_units = "ns",
-                    dt = dt,
-                    dt_units = "ns",
-                    values = values,
-                    values_units = "ADC",
-                    attrs = {"datatype":"table{t0,dt,values}"}
-                )
-                ts = Array(timestamps[ch],attrs={'datatype': 'array<1>{real}', 'units': 'ADC'})
+            if buffer_counter > buffer_size:
+                if save_enabled:
+                    buffers = flush_buffers_to_lh5(
+                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
+                    )
+                    if os.path.exists(current_file) and os.path.getsize(current_file) >= max_file_size_bytes:
+                        print(f"File {current_file} exceeded size. Rotating.")
+                        timestamp_str = datetime.now().strftime("%Y%m%dT%H%M%SZ")
+                        current_file = get_new_filename(base_name, timestamp_str)
+                buffer_counter = 0
+            trigger_id += 1
 
-                raw_data = Table(col_dict={
-                    "waveform": waveform,
-                    "timestamp": ts
-                })
-    
-                print(f"Saving channel ch{ch} in lh5 file")
-                lh5.write(
-                    raw_data,
-                    name="raw",
-                    lh5_file=f"{out_file.split('.lh5')[0]}_{n:03}.lh5",
-                    wo_mode="overwrite",
-                    group=f"ch{ch}"
-                )
-            
-            if save_temperature:
-                temp0 = Array(temperatures[:,0],attrs={'datatype': 'array<1>{real}', 'units': 'ADC'})
-                temp1 = Array(temperatures[:,1],attrs={'datatype': 'array<1>{real}', 'units': 'ADC'})
-                temp2 = Array(temperatures[:,2],attrs={'datatype': 'array<1>{real}', 'units': 'ADC'})
-                temp3 = Array(temperatures[:,3],attrs={'datatype': 'array<1>{real}', 'units': 'ADC'})
-                temp4 = Array(temperatures[:,4],attrs={'datatype': 'array<1>{real}', 'units': 'ADC'})
-                temp5 = Array(temperatures[:,5],attrs={'datatype': 'array<1>{real}', 'units': 'ADC'})
-                temp6 = Array(temperatures[:,6],attrs={'datatype': 'array<1>{real}', 'units': 'ADC'})
-    
-                raw_data = Table(col_dict={
-                    "temp0": temp0,
-                    "temp1": temp1,
-                    "temp2": temp2,
-                    "temp3": temp3,
-                    "temp4": temp4,
-                    "temp5": temp5,
-                    "temp6": temp6
-                })
-                print(f"Saving temperatures in lh5 file")
-                lh5.write(
-                    raw_data,
-                    name="raw",
-                    lh5_file=f"{out_file.split('.lh5')[0]}_{n:03}.lh5",
-                    wo_mode="overwrite",
-                    group="dig"
-                )
-                
+            if total_events and trigger_id >= total_events:
+                print("Reached target number of events. Stopping.")
+                print_stats(dig, start_time, trigger_id, channel_list)
+                if save_enabled:
+                    buffers = flush_buffers_to_lh5(
+                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
+                    )
+                break
+            if max_duration and (time.time() - start_time) >= max_duration:
+                print("Reached max acquisition time. Stopping.")
+                print_stats(dig, start_time, trigger_id, channel_list)
+                if save_enabled:
+                    buffers = flush_buffers_to_lh5(
+                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
+                    )
+                break
+
         dig.cmd.disarmacquisition()
-        print("Disarming")
+        print("Acquisition stopped.")
+
 
 def get_new_filename(base_name, timestamp_str):
     return f"{base_name}_{timestamp_str}.lh5"
+
 
 def print_dig_stats(dig):
     modelname = dig.par.modelname.value
@@ -350,6 +303,138 @@ def print_dig_stats(dig):
           f"Input dynamic range = {inputrange} V\n",
           f"Input type = {inputtype}\n")
 
+
+def print_stats(dig, start_time, counter, channel_list):
+    elapsed = time.time() - start_time
+    rate = counter / elapsed / (1024. * 1024.) # MB/s
+    print(f"Elapsed time {elapsed:.1f} s, n. events: {counter}, readout rate {rate:.1e} MB/s")
+
+    status = decode_status(dig.get_value("/par/acquisitionstatus"))
+    print(f"Acquisition Status:")
+    for key, value in status.items():
+        print(f"  {key:17}: {'ON' if value else 'OFF'}")
+
+    for ch in channel_list:
+        real_time = dig.get_value(f"/ch/{ch}/par/chrealtimemonitor")
+        dead_time = dig.get_value(f"/ch/{ch}/par/chdeadtimemonitor")
+        trigger_cnt = dig.get_value(f"/ch/{ch}/par/chtriggercnt")
+        wave_cnt = dig.get_value(f"/ch/{ch}/par/chwavecnt")
+        saved_event_cnt = dig.get_value(f"/ch/{ch}/par/chsavedeventcnt")
+        self_trg_rate = dig.get_value(f"/ch/{ch}/par/selftrgrate")
+        stats_dict = {
+            "real_time": real_time, 
+            "dead_time": dead_time,
+            "trigger_cnt": trigger_cnt,
+            "wave_cnt": wave_cnt,
+            "saved_event_cnt": saved_event_cnt,
+            "self_trg_rate": self_trg_rate,
+        }
+        print(f"[STATS] ch{ch:03}: ", end="")
+        for par, val in stats_dict.items():
+            if "time" in par:
+                val = int(val) // 524288
+            print(f"{par}: {val} ", end="")
+        print()
+
+
+def decode_status(status):
+    flags = {
+        0: "Armed",
+        1: "Run",
+        2: "Run_mw",
+        3: "Jesd_Clk_Valid",
+        4: "Busy",
+        5: "PreTriggerReady",
+        6: "LicenseFail",
+    }
+    status = int(status)
+    decoded_status = {}
+    for bit, name in flags.items():
+        decoded_status[name] = bool((status >> bit) & 1)
+    return decoded_status
+
+
+def flush_buffers_to_lh5(
+    buffers,
+    trigger_id,
+    channel_list,
+    current_file,
+    sampling_period_ns,
+    save_temperature=False,
+    temperature_buffer=None,
+    temp_names=None
+):
+    """
+    Converts buffered list data into LH5 Table structures and writes to disk.
+    """
+
+    channel_str = " | ".join([f"{ch}: {buffers[ch]['count']}" for ch in channel_list])
+    output = f"[FILE] {current_file:<20} [TOTAL] {trigger_id:<8} [CHANNELS] {channel_str}"
+    print(output, flush=True)
+
+    for ch in channel_list:
+        ch_data = buffers[ch]
+        ch_size = len(ch_data["waveform"])
+
+        if ch_size == 0:
+            continue
+
+        def make_waveform_table(data_key, units="ADC"):
+            values = ArrayOfEqualSizedArrays(
+                nda=np.array(ch_data[data_key]),
+                attrs={
+                    "datatype": "array_of_equalsized_arrays<1,1>{real}", 
+                    "units": units
+                },
+            )
+            return WaveformTable(
+                size=ch_size,
+                t0=Array([0] * ch_size, attrs={"datatype": "array<1>{real}"}),
+                dt=Array([sampling_period_ns] * ch_size, attrs={"datatype": "array<1>{real}", "units": "ns"}),
+                values=values,
+                values_units=units
+            )
+
+        def make_lh5_arr(data_key, units=None):
+            attrs = {"datatype": "array<1>{real}"}
+            if units: attrs["units"] = units
+            return Array(ch_data[data_key], attrs=attrs)
+    
+        raw_data = Table(
+            col_dict={
+                "eventnumber": Array(np.arange(buffers[ch]["count"]-ch_size,buffers[ch]["count"]), attrs={"datatype": "array<1>{real}"}),
+                "timestamp":   make_lh5_arr("timestamp", units="ns"),
+                "energy":      make_lh5_arr("energy"),
+                "flag_low":    make_lh5_arr("flag_low"),
+                "flag_high":   make_lh5_arr("flag_high"),
+                "waveform":    make_waveform_table("waveform"),
+                "time_filter": make_waveform_table("time_filter"),
+                "digital_1":   make_waveform_table("digital_1"),
+                "digital_2":   make_waveform_table("digital_2"),
+                "digital_3":   make_waveform_table("digital_3"),
+                "digital_4":   make_waveform_table("digital_4")
+            }
+        )
+        lh5.write(raw_data, name="raw", lh5_file=current_file, wo_mode="append", group=f"ch{ch:03}")
+        for key in buffers[ch]:
+            if key in ["count"]: continue
+            else: buffers[ch][key].clear()
+
+    if save_temperature and temperature_buffer and temp_names:
+        temp_np = np.array(temperature_buffer)
+        temp_arrs = {
+            f"temp{i}": Array(
+                temp_np[:, i], 
+                attrs={"datatype": "array<1>{real}", "units": "C"}
+            )
+            for i in range(len(temp_names))
+        }
+        temp_data = Table(col_dict=temp_arrs)
+        lh5.write(temp_data, name="raw", lh5_file=current_file, wo_mode="append", group="dig")
+        temperature_buffer.clear()
+    return buffers
+
+        
 def daq_dpp():
     """
     Entry point for the console script 'daq-dpppha'.

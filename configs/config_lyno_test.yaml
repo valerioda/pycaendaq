@@ -3,7 +3,7 @@ general_settings:
   pretriggers: 500 # samples [0, 2042]
   software_trigger_rate: 100 # Hz
   max_file_size_mb: 100
-  buffer_size: 50
+  buffer_size: 500
   interval_stats: 2000
   iolevel: TTL
   acqtriggersource: ITLA
@@ -30,5 +30,5 @@ channel_settings:
     selftriggeredge: RISE
     selftriggerwidth: 2
     signaloffset: 0
-    triggerthr: 500
+    triggerthr: 80
     triggerthrmode: Relative
