@@ -125,7 +125,7 @@ def main():
 
         print(f"--- Applying general digitizer settings ---")
         for param_name, param_value in gen_settings.items():
-            if param_name in ["max_file_size_mb","buffer_size","interval_stats"]:
+            if param_name in ["max_file_size_mb", "buffer_size", "interval_stats", "temperature_period"]:
                 continue
             if param_value is None:
                 continue
@@ -210,8 +210,21 @@ def main():
             "count": 0
         } for ch in channel_list}
 
+        record_lengths = {}
+        for ch in channel_list:
+            n = int(dig.get_value(f"/ch/{ch}/par/chrecordlengths"))
+            if dig.get_value(f"/ch/{ch}/par/waveanalogprobe0") == "ADCInput16":
+                n *= 2
+            record_lengths[ch] = n
+
         print("\nStarting acquisition...")
         trigger_id = 0
+        last_temp_time = 0.0
+        temp_period = gen_settings.get("temperature_period", 5.0)  # seconds
+        reference_channel = channel_list[0]
+        closing = False
+        last_reference_timestamp = None
+
         while True:
             if "SwTrg" in globaltriggersource:
                 dig.cmd.sendswtrigger()
@@ -225,35 +238,83 @@ def main():
                     break
                 raise ex
 
-            event = {name: data[idx].value.copy() for name, idx in mapping.items()}
-            ch = int(event["channel"])
-            chrecordlengths = int(dig.get_value(f"/ch/{ch}/par/chrecordlengths"))
-            if dig.get_value(f"/ch/{ch}/par/waveanalogprobe0") == "ADCInput16":
-                chrecordlengths *= 2
-            buffers[ch]["waveform"].append(event["analog_probe_1"][:chrecordlengths])
-            buffers[ch]["time_filter"].append(event["analog_probe_2"][:chrecordlengths])
-            buffers[ch]["digital_1"].append(event["digital_probe_1"][:chrecordlengths])
-            buffers[ch]["digital_2"].append(event["digital_probe_2"][:chrecordlengths])
-            buffers[ch]["digital_3"].append(event["digital_probe_3"][:chrecordlengths])
-            buffers[ch]["digital_4"].append(event["digital_probe_4"][:chrecordlengths])
-            buffers[ch]["timestamp"].append(np.uint64(start_timestamp + event["timestamp_ns"]))
-            buffers[ch]["energy"].append(event["energy"])
-            buffers[ch]["flag_low"].append(event["flag_low"])
-            buffers[ch]["flag_high"].append(event["flag_high"])
-            buffers[ch]["count"] += 1
+            ch = int(data[mapping["channel"]].value)
+            if ch not in buffers:
+                print(f"[WARNING] Event from inactive channel {ch}. Skipping.")
+                continue
+            
+            event_timestamp = np.uint64(start_timestamp + data[mapping["timestamp_ns"]].value)
+            now = time.time()
+
+            if max_duration and (now - start_time) >= max_duration and not closing:
+                closing = True
+                last_reference_timestamp = None
+                print("Reached max duration. Closing at next reference-channel boundary.")
+
+            if closing and ch == reference_channel:
+                current_ref_ts = event_timestamp
+            
+                if last_reference_timestamp is None:
+                    last_reference_timestamp = current_ref_ts
+            
+                elif current_ref_ts != last_reference_timestamp:
+                    print(
+                        f"Reached reference-channel boundary on ch{reference_channel:03}. "
+                        "Stopping before saving next event group."
+                    )
+                    print_stats(dig, start_time, trigger_id, channel_list)
+            
+                    if save_enabled:
+                        buffers = flush_buffers_to_lh5(
+                            buffers,
+                            trigger_id,
+                            channel_list,
+                            current_file,
+                            sampling_period_ns,
+                            save_temperature=save_temperature,
+                            temperature_buffer=temperature_buffer,
+                            temp_names=temp_names,
+                        )
+            
+                    break
+            
+            n = record_lengths[ch]
+            buf = buffers[ch]
+
+            buf["waveform"].append(data[mapping["analog_probe_1"]].value[:n].copy())
+            buf["time_filter"].append(data[mapping["analog_probe_2"]].value[:n].copy())
+            buf["digital_1"].append(data[mapping["digital_probe_1"]].value[:n].copy())
+            buf["digital_2"].append(data[mapping["digital_probe_2"]].value[:n].copy())
+            buf["digital_3"].append(data[mapping["digital_probe_3"]].value[:n].copy())
+            buf["digital_4"].append(data[mapping["digital_probe_4"]].value[:n].copy())
+            buf["timestamp"].append(event_timestamp)
+            buf["energy"].append(np.uint16(data[mapping["energy"]].value))
+            buf["flag_low"].append(np.uint16(data[mapping["flag_low"]].value))
+            buf["flag_high"].append(np.uint16(data[mapping["flag_high"]].value))
+            buf["count"] += 1
 
             if save_temperature:
-                temp_values = [float(dig.get_value(f"/par/{name}")) for name in temp_names]
-                temperature_buffer.append(temp_values)
+                now = time.time()
+                if now - last_temp_time >= temp_period:
+                    temp_values = [float(dig.get_value(f"/par/{name}")) for name in temp_names]
+                    temperature_buffer.append(temp_values)
+                    last_temp_time = now
 
             buffer_counter += 1
-            if (trigger_id % interval_stats) == 0:
+            if trigger_id > 0 and (trigger_id % interval_stats) == 0:
                 print_stats(dig, start_time, trigger_id, channel_list)
 
-            if buffer_counter > buffer_size:
+            if buffer_counter >= buffer_size:
                 if save_enabled:
                     buffers = flush_buffers_to_lh5(
-                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
+                        buffers,
+                        trigger_id,
+                        channel_list,
+                        current_file,
+                        sampling_period_ns,
+                        save_temperature=save_temperature,
+                        temperature_buffer=temperature_buffer,
+                        temp_names=temp_names,
                     )
                     if os.path.exists(current_file) and os.path.getsize(current_file) >= max_file_size_bytes:
                         print(f"File {current_file} exceeded size. Rotating.")
@@ -262,20 +323,19 @@ def main():
                 buffer_counter = 0
             trigger_id += 1
 
-            if total_events and trigger_id >= total_events:
-                print("Reached target number of events. Stopping.")
+            if total_events and all(buffers[ch]["count"] >= total_events for ch in channel_list):
+                print(f"Reached target number of events on all active channels: {total_events}")
                 print_stats(dig, start_time, trigger_id, channel_list)
                 if save_enabled:
                     buffers = flush_buffers_to_lh5(
-                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
-                    )
-                break
-            if max_duration and (time.time() - start_time) >= max_duration:
-                print("Reached max acquisition time. Stopping.")
-                print_stats(dig, start_time, trigger_id, channel_list)
-                if save_enabled:
-                    buffers = flush_buffers_to_lh5(
-                        buffers, trigger_id, channel_list, current_file, sampling_period_ns
+                        buffers,
+                        trigger_id,
+                        channel_list,
+                        current_file,
+                        sampling_period_ns,
+                        save_temperature=save_temperature,
+                        temperature_buffer=temperature_buffer,
+                        temp_names=temp_names,
                     )
                 break
 
@@ -306,8 +366,8 @@ def print_dig_stats(dig):
 
 def print_stats(dig, start_time, counter, channel_list):
     elapsed = time.time() - start_time
-    rate = counter / elapsed / (1024. * 1024.) # MB/s
-    print(f"Elapsed time {elapsed:.1f} s, n. events: {counter}, readout rate {rate:.1e} MB/s")
+    event_rate = counter / elapsed
+    print(f"Elapsed time {elapsed:.1f} s, n. events: {counter}, event rate {event_rate:.1f} Hz")
 
     status = decode_status(dig.get_value("/par/acquisitionstatus"))
     print(f"Acquisition Status:")
@@ -368,9 +428,25 @@ def flush_buffers_to_lh5(
     Converts buffered list data into LH5 Table structures and writes to disk.
     """
 
+    out_dir = os.path.dirname(os.path.abspath(current_file))
+    os.makedirs(out_dir, exist_ok=True)
+
     channel_str = " | ".join([f"{ch}: {buffers[ch]['count']}" for ch in channel_list])
     output = f"[FILE] {current_file:<20} [TOTAL] {trigger_id:<8} [CHANNELS] {channel_str}"
     print(output, flush=True)
+
+    data_keys = [
+        "waveform",
+        "time_filter",
+        "digital_1",
+        "digital_2",
+        "digital_3",
+        "digital_4",
+        "timestamp",
+        "energy",
+        "flag_low",
+        "flag_high",
+    ]
 
     for ch in channel_list:
         ch_data = buffers[ch]
@@ -378,6 +454,21 @@ def flush_buffers_to_lh5(
 
         if ch_size == 0:
             continue
+
+        lengths = {key: len(ch_data[key]) for key in data_keys}
+
+        if len(set(lengths.values())) != 1:
+            print(f"[ERROR] Buffer length mismatch for ch{ch:03}: {lengths}")
+            min_len = min(lengths.values())
+            print(f"[WARNING] Truncating all buffers for ch{ch:03} to {min_len} entries.")
+
+            for key in data_keys:
+                ch_data[key] = ch_data[key][:min_len]
+
+            ch_size = min_len
+
+            if ch_size == 0:
+                continue
 
         def make_waveform_table(data_key, units="ADC"):
             values = ArrayOfEqualSizedArrays(
@@ -433,7 +524,6 @@ def flush_buffers_to_lh5(
         lh5.write(temp_data, name="raw", lh5_file=current_file, wo_mode="append", group="dig")
         temperature_buffer.clear()
     return buffers
-
         
 def daq_dpp():
     """

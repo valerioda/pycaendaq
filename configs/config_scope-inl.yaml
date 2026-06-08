@@ -1,0 +1,33 @@
+general_settings:
+  recordlengths: 4084 #samples [4, 10485760]
+  pretriggers: 2042 # samples [0, 2042]
+  software_trigger_rate: 100 # Hz
+  max_file_size_mb: 100
+  buffer_size: 1000
+  interval_stats: 5000
+  iolevel: TTL # (STRING) [['NIM', 'TTL']]
+  acqtriggersource: TrgIn #TestPulse
+  decimationfactor: 1
+  startsource: SWcmd
+  syncoutmode: Disabled
+  testpulsehighlevel: 1000
+  testpulselowlevel: 0
+  testpulseperiod: 1000000 # (ns) T = 1 ms -> f = 1 KHz
+  testpulsewidth: 100
+  triggeridmode: TriggerCnt
+  tstampresetsource: Start
+channel_settings:
+  group1:
+    channels: "56"
+    chenable: True
+    chsupprsamplesoverthreshold: 1
+    chsupprthr: 0
+    dcoffset: 10
+    itlconnect: Disabled
+    overthresholdvetowidth: 0
+    samplesoverthreshold: 1
+    selftriggeredge: RISE
+    selftriggerwidth: 2
+    signaloffset: 0
+    triggerthr: 100
+    triggerthrmode: Relative
