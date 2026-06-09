@@ -209,6 +209,8 @@ def main():
             if buffer_counter >= buffer_size:
                 if save_enabled:
                     print(f"...writing current file: {current_file}, total events {trigger_id}")
+                    out_dir = os.path.dirname(os.path.abspath(current_file))
+                    os.makedirs(out_dir, exist_ok=True)
                     for i, ch in enumerate(channel_list):
                         if waveform_buffer[i].ndim != 2 or waveform_buffer[i].shape[1] != recordlengths:
                             print(f"[ERROR] Buffer shape mismatch: {waveform_buffer[i].shape}")

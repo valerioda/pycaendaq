@@ -224,6 +224,8 @@ def main():
         reference_channel = channel_list[0]
         closing = False
         last_reference_timestamp = None
+        last_wf_by_ch = {}
+        skipped_duplicate_wf = {ch: 0 for ch in channel_list}
 
         while True:
             if "SwTrg" in globaltriggersource:
@@ -242,7 +244,7 @@ def main():
             if ch not in buffers:
                 print(f"[WARNING] Event from inactive channel {ch}. Skipping.")
                 continue
-            
+
             event_timestamp = np.uint64(start_timestamp + data[mapping["timestamp_ns"]].value)
             now = time.time()
 
@@ -253,17 +255,14 @@ def main():
 
             if closing and ch == reference_channel:
                 current_ref_ts = event_timestamp
-            
                 if last_reference_timestamp is None:
                     last_reference_timestamp = current_ref_ts
-            
                 elif current_ref_ts != last_reference_timestamp:
                     print(
                         f"Reached reference-channel boundary on ch{reference_channel:03}. "
                         "Stopping before saving next event group."
                     )
                     print_stats(dig, start_time, trigger_id, channel_list)
-            
                     if save_enabled:
                         buffers = flush_buffers_to_lh5(
                             buffers,
@@ -275,22 +274,58 @@ def main():
                             temperature_buffer=temperature_buffer,
                             temp_names=temp_names,
                         )
-            
                     break
-            
+
             n = record_lengths[ch]
             buf = buffers[ch]
 
-            buf["waveform"].append(data[mapping["analog_probe_1"]].value[:n].copy())
-            buf["time_filter"].append(data[mapping["analog_probe_2"]].value[:n].copy())
-            buf["digital_1"].append(data[mapping["digital_probe_1"]].value[:n].copy())
-            buf["digital_2"].append(data[mapping["digital_probe_2"]].value[:n].copy())
-            buf["digital_3"].append(data[mapping["digital_probe_3"]].value[:n].copy())
-            buf["digital_4"].append(data[mapping["digital_probe_4"]].value[:n].copy())
-            buf["timestamp"].append(event_timestamp)
-            buf["energy"].append(np.uint16(data[mapping["energy"]].value))
-            buf["flag_low"].append(np.uint16(data[mapping["flag_low"]].value))
-            buf["flag_high"].append(np.uint16(data[mapping["flag_high"]].value))
+            wf = data[mapping["analog_probe_1"]].value[:n].copy()
+            tf = data[mapping["analog_probe_2"]].value[:n].copy()
+            d1 = data[mapping["digital_probe_1"]].value[:n].copy()
+            d2 = data[mapping["digital_probe_2"]].value[:n].copy()
+            d3 = data[mapping["digital_probe_3"]].value[:n].copy()
+            d4 = data[mapping["digital_probe_4"]].value[:n].copy()
+            
+            timestamp_caen = np.uint64(data[mapping["timestamp"]].value)
+            timestamp_abs = np.uint64(start_timestamp + data[mapping["timestamp_ns"]].value)
+            energy = np.uint16(data[mapping["energy"]].value)
+            flag_low = np.uint16(data[mapping["flag_low"]].value)
+            flag_high = np.uint16(data[mapping["flag_high"]].value)
+            
+            is_duplicate_wf = False
+            
+            for other_ch, other in last_wf_by_ch.items():
+                if other_ch == ch:
+                    continue
+            
+                other_wf = other["wf"]
+                other_ts = other["timestamp_caen"]
+            
+                if wf.shape == other_wf.shape and np.array_equal(wf, other_wf):
+                    is_duplicate_wf = True
+                    skipped_duplicate_wf[ch] += 1
+                    break
+            
+            last_wf_by_ch[ch] = {
+                "wf": wf,
+                "timestamp_caen": timestamp_caen,
+            }
+            
+            if is_duplicate_wf:
+                trigger_id += 1
+                continue
+            
+            buf["waveform"].append(wf)
+            buf["time_filter"].append(tf)
+            buf["digital_1"].append(d1)
+            buf["digital_2"].append(d2)
+            buf["digital_3"].append(d3)
+            buf["digital_4"].append(d4)
+            
+            buf["timestamp"].append(timestamp_abs)
+            buf["energy"].append(energy)
+            buf["flag_low"].append(flag_low)
+            buf["flag_high"].append(flag_high)
             buf["count"] += 1
 
             if save_temperature:
@@ -338,6 +373,9 @@ def main():
                         temp_names=temp_names,
                     )
                 break
+        print("[SKIPPED DUPLICATE WAVEFORMS]")
+        for ch in channel_list:
+            print(f"  ch{ch:03}: {skipped_duplicate_wf[ch]}")
 
         dig.cmd.disarmacquisition()
         print("Acquisition stopped.")
