@@ -3,9 +3,7 @@ import os
 import time
 from datetime import datetime
 import numpy as np
-from matplotlib import pyplot as plt
 import yaml
-import ast
 import sys
 
 from lgdo import lh5, Table, Array, WaveformTable, ArrayOfEqualSizedArrays
@@ -125,7 +123,7 @@ def main():
 
         print(f"--- Applying general digitizer settings ---")
         for param_name, param_value in gen_settings.items():
-            if param_name in ["max_file_size_mb", "buffer_size", "interval_stats", "temperature_period"]:
+            if param_name in ["max_file_size_mb", "buffer_size", "interval_stats", "temperature_period", "closing_mode"]:
                 continue
             if param_value is None:
                 continue
@@ -221,6 +219,9 @@ def main():
         trigger_id = 0
         last_temp_time = 0.0
         temp_period = gen_settings.get("temperature_period", 5.0)  # seconds
+        closing_mode = gen_settings.get("closing_mode", "none")
+        use_reference_closing = closing_mode == "reference_channel"
+        print(f"Closing mode: {closing_mode}")
         reference_channel = channel_list[0]
         closing = False
         last_reference_timestamp = None
@@ -248,33 +249,34 @@ def main():
             event_timestamp = np.uint64(start_timestamp + data[mapping["timestamp_ns"]].value)
             now = time.time()
 
-            if max_duration and (now - start_time) >= max_duration and not closing:
-                closing = True
-                last_reference_timestamp = None
-                print("Reached max duration. Closing at next reference-channel boundary.")
-
-            if closing and ch == reference_channel:
-                current_ref_ts = event_timestamp
-                if last_reference_timestamp is None:
-                    last_reference_timestamp = current_ref_ts
-                elif current_ref_ts != last_reference_timestamp:
-                    print(
-                        f"Reached reference-channel boundary on ch{reference_channel:03}. "
-                        "Stopping before saving next event group."
-                    )
-                    print_stats(dig, start_time, trigger_id, channel_list)
-                    if save_enabled:
-                        buffers = flush_buffers_to_lh5(
-                            buffers,
-                            trigger_id,
-                            channel_list,
-                            current_file,
-                            sampling_period_ns,
-                            save_temperature=save_temperature,
-                            temperature_buffer=temperature_buffer,
-                            temp_names=temp_names,
+            if use_reference_closing:
+                if max_duration and (now - start_time) >= max_duration and not closing:
+                    closing = True
+                    last_reference_timestamp = None
+                    print("Reached max duration. Closing at next reference-channel boundary.")
+            
+                if closing and ch == reference_channel:
+                    current_ref_ts = event_timestamp
+                    if last_reference_timestamp is None:
+                        last_reference_timestamp = current_ref_ts
+                    elif current_ref_ts != last_reference_timestamp:
+                        print(
+                            f"Reached reference-channel boundary on ch{reference_channel:03}. "
+                            "Stopping before saving next event group."
                         )
-                    break
+                        print_stats(dig, start_time, trigger_id, channel_list)
+                        if save_enabled:
+                            buffers = flush_buffers_to_lh5(
+                                buffers,
+                                trigger_id,
+                                channel_list,
+                                current_file,
+                                sampling_period_ns,
+                                save_temperature=save_temperature,
+                                temperature_buffer=temperature_buffer,
+                                temp_names=temp_names,
+                            )
+                        break
 
             n = record_lengths[ch]
             buf = buffers[ch]
@@ -291,30 +293,58 @@ def main():
             energy = np.uint16(data[mapping["energy"]].value)
             flag_low = np.uint16(data[mapping["flag_low"]].value)
             flag_high = np.uint16(data[mapping["flag_high"]].value)
-            
+
+            wf_checksum = np.int64(np.sum(wf.astype(np.int64)))
             is_duplicate_wf = False
-            
             for other_ch, other in last_wf_by_ch.items():
-                if other_ch == ch:
+                if wf_checksum != other["checksum"]:
                     continue
-            
                 other_wf = other["wf"]
-                other_ts = other["timestamp_caen"]
-            
                 if wf.shape == other_wf.shape and np.array_equal(wf, other_wf):
                     is_duplicate_wf = True
                     skipped_duplicate_wf[ch] += 1
                     break
-            
             last_wf_by_ch[ch] = {
                 "wf": wf,
                 "timestamp_caen": timestamp_caen,
+                "checksum": wf_checksum,
             }
-            
+
             if is_duplicate_wf:
                 trigger_id += 1
+                if total_events and all(buffers[ch]["count"] >= total_events for ch in channel_list):
+                    print(f"Reached target number of events on all active channels: {total_events}")
+                    print_stats(dig, start_time, trigger_id, channel_list)
+                    if save_enabled:
+                        buffers = flush_buffers_to_lh5(
+                            buffers,
+                            trigger_id,
+                            channel_list,
+                            current_file,
+                            sampling_period_ns,
+                            save_temperature=save_temperature,
+                            temperature_buffer=temperature_buffer,
+                            temp_names=temp_names,
+                        )
+                    break
+
+                if (not use_reference_closing) and max_duration and (time.time() - start_time) >= max_duration:
+                    print("Reached max acquisition time. Stopping.")
+                    print_stats(dig, start_time, trigger_id, channel_list)
+                    if save_enabled:
+                        buffers = flush_buffers_to_lh5(
+                            buffers,
+                            trigger_id,
+                            channel_list,
+                            current_file,
+                            sampling_period_ns,
+                            save_temperature=save_temperature,
+                            temperature_buffer=temperature_buffer,
+                            temp_names=temp_names,
+                        )
+                    break
                 continue
-            
+
             buf["waveform"].append(wf)
             buf["time_filter"].append(tf)
             buf["digital_1"].append(d1)
@@ -373,9 +403,37 @@ def main():
                         temp_names=temp_names,
                     )
                 break
+
+            if (not use_reference_closing) and max_duration and (time.time() - start_time) >= max_duration:
+                print("Reached max acquisition time. Stopping.")
+                print_stats(dig, start_time, trigger_id, channel_list)
+                if save_enabled:
+                    buffers = flush_buffers_to_lh5(
+                        buffers,
+                        trigger_id,
+                        channel_list,
+                        current_file,
+                        sampling_period_ns,
+                        save_temperature=save_temperature,
+                        temperature_buffer=temperature_buffer,
+                        temp_names=temp_names,
+                    )
+                break
+
         print("[SKIPPED DUPLICATE WAVEFORMS]")
         for ch in channel_list:
             print(f"  ch{ch:03}: {skipped_duplicate_wf[ch]}")
+
+        print("[DAQ FINAL COUNTS]")
+        for ch in channel_list:
+            written = buffers[ch]["count"]
+            skipped = skipped_duplicate_wf[ch]
+            print(
+                f"  ch{ch:03}: "
+                f"written={written} "
+                f"skipped_duplicate={skipped} "
+                f"written+skipped={written + skipped}"
+            )
 
         dig.cmd.disarmacquisition()
         print("Acquisition stopped.")
